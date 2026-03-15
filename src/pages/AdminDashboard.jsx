@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react'
 
 const mockEmployees = [
-  { id: 1, name: 'John Employee', email: 'employee@test.com' },
-  { id: 2, name: 'Jane Worker', email: 'jane@test.com' },
-  { id: 3, name: 'Bob Staff', email: 'bob@test.com' }
+  { id: 1, name: 'John Employee', email: 'employee@test.com', specialization: 'Software' },
+  { id: 2, name: 'Jane Worker', email: 'jane@test.com', specialization: 'Digital Marketing' },
+  { id: 3, name: 'Bob Staff', email: 'bob@test.com', specialization: 'Software' }
 ]
 
 function AdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
+  const [projects, setProjects] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState({})
   const [statusUpdate, setStatusUpdate] = useState({})
+  const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})
 
   useEffect(() => {
     loadTasks()
-    const interval = setInterval(loadTasks, 3000)
+    loadProjects()
+    const interval = setInterval(() => {
+      loadTasks()
+      loadProjects()
+    }, 3000)
     return () => clearInterval(interval)
   }, [])
 
@@ -21,6 +27,13 @@ function AdminDashboard({ user, onLogout }) {
     const savedTasks = localStorage.getItem('tasks')
     if (savedTasks) {
       setTasks(JSON.parse(savedTasks))
+    }
+  }
+
+  const loadProjects = () => {
+    const savedProjects = localStorage.getItem('softwareProjects')
+    if (savedProjects) {
+      setProjects(JSON.parse(savedProjects))
     }
   }
 
@@ -50,6 +63,39 @@ function AdminDashboard({ user, onLogout }) {
     localStorage.setItem('tasks', JSON.stringify(updatedTasks))
     loadTasks()
     setSelectedEmployee({ ...selectedEmployee, [taskId]: '' })
+  }
+
+  const handleAssignProject = (projectId, employeeName) => {
+    if (!employeeName) return
+
+    const employee = mockEmployees.find(emp => emp.name === employeeName)
+    if (!employee || employee.specialization !== 'Software') {
+      alert('Only software development employees can be assigned to projects')
+      return
+    }
+
+    const savedProjects = localStorage.getItem('softwareProjects')
+    const allProjects = savedProjects ? JSON.parse(savedProjects) : []
+    const updatedProjects = allProjects.map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          assignedTo: employeeName,
+          assignedBy: user.name,
+          assignedAt: new Date().toISOString(),
+          statusHistory: [...(p.statusHistory || []), {
+            status: 'Assigned to Employee',
+            updatedBy: user.name,
+            updatedAt: new Date().toISOString(),
+            role: 'admin'
+          }]
+        }
+      }
+      return p
+    })
+    localStorage.setItem('softwareProjects', JSON.stringify(updatedProjects))
+    loadProjects()
+    setSelectedProjectEmployee({ ...selectedProjectEmployee, [projectId]: '' })
   }
 
   const handleUpdateStatus = (taskId, newStatus) => {
@@ -83,6 +129,8 @@ function AdminDashboard({ user, onLogout }) {
   const currentTasks = tasks.filter(t => t.status === 'pending' || t.status === 'accepted' || t.status === 'in_progress')
   const cancelledTasks = tasks.filter(t => t.status === 'rejected')
   const assignedCount = tasks.filter(t => t.assignedTo).length
+  const availableProjects = projects.filter(p => !p.assignedTo && p.status === 'Available')
+  const softwareEmployees = mockEmployees.filter(emp => emp.specialization === 'Software')
 
   const formatDateTime = (dateString) => {
     const date = new Date(dateString)
@@ -121,7 +169,66 @@ function AdminDashboard({ user, onLogout }) {
           <h3>Total Tasks</h3>
           <div className="stat-value">{tasks.length}</div>
         </div>
+        <div className="stat-card" style={{ borderLeftColor: '#3B82F6' }}>
+          <h3>Available Projects</h3>
+          <div className="stat-value">{availableProjects.length}</div>
+        </div>
       </div>
+
+      {availableProjects.length > 0 && (
+        <div className="card" style={{ background: 'linear-gradient(135deg, var(--light-red) 0%, var(--bg-secondary) 100%)', border: '2px solid var(--primary-red)' }}>
+          <h2>Software Project Assignment</h2>
+          <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+            Assign available software projects to software development employees
+          </p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+            {availableProjects.map(project => (
+              <div key={project.id} style={{
+                background: 'var(--bg-secondary)',
+                padding: '20px',
+                borderRadius: '12px',
+                border: '2px solid var(--border-color)',
+                borderLeft: '4px solid var(--primary-red)'
+              }}>
+                <h4 style={{ marginBottom: '12px' }}>{project.projectName}</h4>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  <strong>Developer:</strong> {project.developerName}
+                </p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  <strong>Client:</strong> {project.clientName}
+                </p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  <strong>Technology:</strong> {project.technology}
+                </p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  <strong>Deadline:</strong> {new Date(project.deadline).toLocaleDateString()}
+                </p>
+                
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <select 
+                    value={selectedProjectEmployee[project.id] || ''}
+                    onChange={(e) => setSelectedProjectEmployee({ ...selectedProjectEmployee, [project.id]: e.target.value })}
+                    style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                  >
+                    <option value="">Assign to Software Employee</option>
+                    {softwareEmployees.map(emp => (
+                      <option key={emp.id} value={emp.name}>{emp.name}</option>
+                    ))}
+                  </select>
+                  <button 
+                    className="btn-red" 
+                    onClick={() => handleAssignProject(project.id, selectedProjectEmployee[project.id])}
+                    style={{ padding: '8px 16px' }}
+                  >
+                    Assign
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2>Pending Tasks ({pendingTasks.length})</h2>

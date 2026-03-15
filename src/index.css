@@ -368,6 +368,49 @@ textarea {
   border: 2px solid var(--primary-red);
 }
 
+/* Software Project Status Styles */
+.status.available,
+.status-display-value.available {
+  background: #DBEAFE;
+  color: #1E40AF;
+  border: 2px solid #3B82F6;
+}
+
+.status.ongoing,
+.status-display-value.ongoing {
+  background: var(--light-yellow);
+  color: var(--dark-yellow);
+  border: 2px solid var(--primary-yellow);
+}
+
+.status.project_in_production,
+.status-display-value.project_in_production {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 2px solid #F59E0B;
+}
+
+.status.testing,
+.status-display-value.testing {
+  background: #E0E7FF;
+  color: #4338CA;
+  border: 2px solid #6366F1;
+}
+
+.status.deployment,
+.status-display-value.deployment {
+  background: #F3E8FF;
+  color: #7C3AED;
+  border: 2px solid #8B5CF6;
+}
+
+.status.cancelled,
+.status-display-value.cancelled {
+  background: var(--light-red);
+  color: var(--dark-red);
+  border: 2px solid var(--primary-red);
+}
+
 /* Priority Badges */
 .priority {
   display: inline-block;
@@ -893,6 +936,11 @@ textarea {
     padding: 0 20px;
   }
 
+  .mobile-add-project-btn {
+    display: block !important;
+    padding: 0 20px;
+  }
+
   .desktop-add-btn {
     display: none !important;
   }
@@ -900,4 +948,46 @@ textarea {
   .desktop-form {
     display: none !important;
   }
+}
+/* Professional Icons */
+.professional-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.professional-icon svg {
+  transition: all 0.3s ease;
+}
+
+.professional-icon:hover svg {
+  transform: scale(1.1);
+}
+
+/* Icon specific styles */
+.client-icon svg {
+  stroke: var(--primary-green);
+}
+
+.employee-icon svg {
+  stroke: var(--primary-red);
+}
+
+.admin-icon svg {
+  stroke: var(--primary-yellow);
+  fill: var(--primary-yellow);
+}
+
+.bdo-icon svg {
+  stroke: var(--primary-green);
+}
+
+.software-icon svg {
+  stroke: var(--primary-red);
+}
+
+/* Hover effects for management cards */
+.card:hover .professional-icon svg {
+  transform: scale(1.05);
 }

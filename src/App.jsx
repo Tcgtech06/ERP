@@ -4,6 +4,7 @@ import ClientDashboard from './pages/ClientDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import EmployeeDashboard from './pages/EmployeeDashboard'
 import BDODashboard from './pages/BDODashboard'
+import SoftwareDeveloperDashboard from './pages/SoftwareDeveloperDashboard'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
 function App() {
@@ -44,6 +45,10 @@ function App() {
   
   if (user.role === 'bdo') {
     return <BDODashboard user={user} onLogout={handleLogout} />
+  }
+  
+  if (user.role === 'developer') {
+    return <SoftwareDeveloperDashboard user={user} onLogout={handleLogout} />
   }
   
   if (user.role === 'superadmin') {

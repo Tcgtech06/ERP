@@ -1,4 +1,9 @@
 import { useState, useEffect } from 'react'
+import BDOReportsPage from './BDOReportsPage'
+import SoftwareProjectsPage from './SoftwareProjectsPage'
+import ClientManagementPage from './ClientManagementPage'
+import EmployeeManagementPage from './EmployeeManagementPage'
+import AdminManagementPage from './AdminManagementPage'
 
 const mockEmployees = [
   { id: 1, name: 'John Employee', email: 'employee@test.com' },
@@ -15,6 +20,7 @@ const mockClients = [
 function SuperAdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [bdoClients, setBdoClients] = useState([])
+  const [softwareProjects, setSoftwareProjects] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -23,15 +29,19 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [selectedEmployee, setSelectedEmployee] = useState('')
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedBdoClient, setSelectedBdoClient] = useState(null)
+  const [selectedSoftwareProject, setSelectedSoftwareProject] = useState(null)
   const [noteText, setNoteText] = useState('')
   const [showNoteForm, setShowNoteForm] = useState({})
+  const [currentView, setCurrentView] = useState('dashboard')
 
   useEffect(() => {
     loadTasks()
     loadBdoClients()
+    loadSoftwareProjects()
     const interval = setInterval(() => {
       loadTasks()
       loadBdoClients()
+      loadSoftwareProjects()
     }, 3000)
     return () => clearInterval(interval)
   }, [])
@@ -47,6 +57,13 @@ function SuperAdminDashboard({ user, onLogout }) {
     const savedClients = localStorage.getItem('bdoClients')
     if (savedClients) {
       setBdoClients(JSON.parse(savedClients))
+    }
+  }
+
+  const loadSoftwareProjects = () => {
+    const savedProjects = localStorage.getItem('softwareProjects')
+    if (savedProjects) {
+      setSoftwareProjects(JSON.parse(savedProjects))
     }
   }
 
@@ -75,6 +92,33 @@ function SuperAdminDashboard({ user, onLogout }) {
     loadBdoClients()
     setNoteText('')
     setShowNoteForm({ ...showNoteForm, [clientId]: false })
+  }
+
+  const handleSendProjectNote = (projectId) => {
+    if (!noteText.trim()) return
+
+    const savedProjects = localStorage.getItem('softwareProjects')
+    const allProjects = savedProjects ? JSON.parse(savedProjects) : []
+    const updatedProjects = allProjects.map(p => {
+      if (p.id === projectId) {
+        const notes = p.notes || []
+        return {
+          ...p,
+          notes: [...notes, {
+            id: Date.now(),
+            text: noteText,
+            sentBy: user.name,
+            sentAt: new Date().toISOString(),
+            seen: false
+          }]
+        }
+      }
+      return p
+    })
+    localStorage.setItem('softwareProjects', JSON.stringify(updatedProjects))
+    loadSoftwareProjects()
+    setNoteText('')
+    setShowNoteForm({ ...showNoteForm, [`project_${projectId}`]: false })
   }
 
   const handleMarkNoteSeen = (clientId, noteId) => {
@@ -198,7 +242,29 @@ function SuperAdminDashboard({ user, onLogout }) {
   }
 
   return (
-    <div className="container">
+    <>
+      {currentView === 'bdo-reports' && (
+        <BDOReportsPage user={user} onBack={() => setCurrentView('dashboard')} />
+      )}
+      
+      {currentView === 'software-projects' && (
+        <SoftwareProjectsPage user={user} onBack={() => setCurrentView('dashboard')} />
+      )}
+      
+      {currentView === 'client-management' && (
+        <ClientManagementPage user={user} onBack={() => setCurrentView('dashboard')} />
+      )}
+      
+      {currentView === 'employee-management' && (
+        <EmployeeManagementPage user={user} onBack={() => setCurrentView('dashboard')} />
+      )}
+      
+      {currentView === 'admin-management' && (
+        <AdminManagementPage user={user} onBack={() => setCurrentView('dashboard')} />
+      )}
+      
+      {currentView === 'dashboard' && (
+        <div className="container">
       <div className="header">
         <div className="header-content">
           <img src="/Images/logo.png" alt="Logo" className="logo" onError={(e) => e.target.style.display = 'none'} />
@@ -228,6 +294,155 @@ function SuperAdminDashboard({ user, onLogout }) {
         <div className="stat-card" style={{ borderLeftColor: '#3B82F6' }}>
           <h3>Total Tasks</h3>
           <div className="stat-value">{statusCounts.total}</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Management Modules</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
+          <div 
+            onClick={() => setCurrentView('client-management')}
+            style={{
+              background: 'linear-gradient(135deg, var(--light-green) 0%, var(--bg-secondary) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '2px solid var(--primary-green)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <div className="professional-icon client-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <h3 style={{ marginBottom: '8px', color: 'var(--primary-green)' }}>Client Management</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Manage client accounts, projects, and communications
+            </p>
+          </div>
+
+          <div 
+            onClick={() => setCurrentView('employee-management')}
+            style={{
+              background: 'linear-gradient(135deg, var(--light-red) 0%, var(--bg-secondary) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '2px solid var(--primary-red)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <div className="professional-icon employee-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-red)" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h3 style={{ marginBottom: '8px', color: 'var(--primary-red)' }}>Employee Management</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Manage employees, specializations, and assignments
+            </p>
+          </div>
+
+          <div 
+            onClick={() => setCurrentView('admin-management')}
+            style={{
+              background: 'linear-gradient(135deg, var(--light-yellow) 0%, var(--bg-secondary) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '2px solid var(--primary-yellow)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <div className="professional-icon admin-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-yellow)" strokeWidth="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              </svg>
+            </div>
+            <h3 style={{ marginBottom: '8px', color: 'var(--primary-yellow)' }}>Admin Management</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Manage administrators and project assignments
+            </p>
+          </div>
+
+          <div 
+            onClick={() => setCurrentView('bdo-reports')}
+            style={{
+              background: 'linear-gradient(135deg, var(--light-green) 0%, var(--bg-secondary) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '2px solid var(--primary-green)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <div className="professional-icon bdo-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <h3 style={{ marginBottom: '8px', color: 'var(--primary-green)' }}>BDO Reports</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Manage Business Development Officer client reports and communications
+            </p>
+            <div style={{ marginTop: '12px', padding: '8px', background: 'var(--primary-green)', borderRadius: '6px' }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>
+                {bdoClients.length} Total Clients
+              </p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => setCurrentView('software-projects')}
+            style={{
+              background: 'linear-gradient(135deg, var(--light-red) 0%, var(--bg-secondary) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '2px solid var(--primary-red)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <div className="professional-icon software-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-red)" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </div>
+            <h3 style={{ marginBottom: '8px', color: 'var(--primary-red)' }}>Software Projects</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Oversee software development projects and developer communications
+            </p>
+            <div style={{ marginTop: '12px', padding: '8px', background: 'var(--primary-red)', borderRadius: '6px' }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>
+                {softwareProjects.length} Total Projects
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -269,6 +484,53 @@ function SuperAdminDashboard({ user, onLogout }) {
                   <div style={{ marginTop: '8px', padding: '8px', background: 'var(--light-yellow)', borderRadius: '6px' }}>
                     <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--dark-yellow)' }}>
                       {client.notes.length} Note(s)
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>Software Projects Overview ({softwareProjects.length})</h2>
+        {softwareProjects.length === 0 ? (
+          <div className="empty-state">
+            <p>No software projects available</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
+            {softwareProjects.map(project => (
+              <div 
+                key={project.id} 
+                onClick={() => setSelectedSoftwareProject(project)}
+                style={{
+                  background: 'var(--bg-primary)',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '2px solid var(--border-color)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  borderLeft: '4px solid var(--primary-red)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+              >
+                <h4 style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>{project.projectName}</h4>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  <strong>Developer:</strong> {project.developerName}
+                </p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  <strong>Status:</strong> {project.status}
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <strong>Client:</strong> {project.clientName}
+                </p>
+                {project.notes && project.notes.length > 0 && (
+                  <div style={{ marginTop: '8px', padding: '8px', background: 'var(--light-yellow)', borderRadius: '6px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--dark-yellow)' }}>
+                      {project.notes.length} Note(s)
                     </p>
                   </div>
                 )}
@@ -321,6 +583,80 @@ function SuperAdminDashboard({ user, onLogout }) {
             <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '12px' }}>
               <h4 style={{ marginBottom: '16px' }}>Notes History</h4>
               {selectedBdoClient.notes.map(note => (
+                <div key={note.id} style={{ 
+                  padding: '12px', 
+                  marginBottom: '12px', 
+                  background: note.seen ? 'var(--light-green)' : 'var(--light-yellow)',
+                  borderRadius: '8px',
+                  borderLeft: `4px solid ${note.seen ? 'var(--primary-green)' : 'var(--primary-yellow)'}`
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                    <div>
+                      <p style={{ fontWeight: '600', marginBottom: '4px' }}>{note.text}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        Sent by: {note.sentBy} on {new Date(note.sentAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: '20px', 
+                      fontSize: '12px', 
+                      fontWeight: '600',
+                      background: note.seen ? 'var(--primary-green)' : 'var(--primary-yellow)',
+                      color: note.seen ? 'white' : 'var(--dark-yellow)'
+                    }}>
+                      {note.seen ? 'Seen' : 'Unseen'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedSoftwareProject && (
+        <div className="card" style={{ background: 'linear-gradient(135deg, var(--light-red) 0%, var(--bg-secondary) 100%)', border: '2px solid var(--primary-red)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2>Software Project Details</h2>
+            <button className="btn-red" onClick={() => setSelectedSoftwareProject(null)}>Close</button>
+          </div>
+
+          <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+            <h3>{selectedSoftwareProject.projectName}</h3>
+            <p><strong>Description:</strong> {selectedSoftwareProject.projectDescription}</p>
+            <p><strong>Technology:</strong> {selectedSoftwareProject.technology}</p>
+            <p><strong>Client:</strong> {selectedSoftwareProject.clientName}</p>
+            <p><strong>Deadline:</strong> {new Date(selectedSoftwareProject.deadline).toLocaleDateString()}</p>
+            <p><strong>Developer:</strong> {selectedSoftwareProject.developerName}</p>
+            <p><strong>Status:</strong> <span className={`status ${selectedSoftwareProject.status.toLowerCase().replace(' ', '_')}`}>{selectedSoftwareProject.status}</span></p>
+            <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '12px' }}>
+              Created: {new Date(selectedSoftwareProject.createdAt).toLocaleDateString()}
+            </p>
+          </div>
+
+          <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+            <h4 style={{ marginBottom: '16px' }}>Send Note to Developer</h4>
+            <textarea
+              placeholder="Type your note here..."
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              rows="3"
+              style={{ width: '100%', padding: '12px', border: '2px solid var(--border-color)', borderRadius: '8px', fontFamily: 'inherit', marginBottom: '12px' }}
+            />
+            <button 
+              className="btn-green" 
+              onClick={() => handleSendProjectNote(selectedSoftwareProject.id)}
+              style={{ width: '100%' }}
+            >
+              Send Note
+            </button>
+          </div>
+
+          {selectedSoftwareProject.notes && selectedSoftwareProject.notes.length > 0 && (
+            <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '12px' }}>
+              <h4 style={{ marginBottom: '16px' }}>Notes History</h4>
+              {selectedSoftwareProject.notes.map(note => (
                 <div key={note.id} style={{ 
                   padding: '12px', 
                   marginBottom: '12px', 
@@ -642,6 +978,8 @@ function SuperAdminDashboard({ user, onLogout }) {
         </div>
       </div>
     </div>
+      )}
+    </>
   )
 }
 
