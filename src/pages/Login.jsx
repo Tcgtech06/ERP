@@ -1,46 +1,49 @@
 import { useState } from 'react'
-
-const mockUsers = [
-  { email: 'client@test.com', password: 'password', name: 'Client User', role: 'client' },
-  { email: 'admin@test.com', password: 'password', name: 'Admin User', role: 'admin' },
-  { email: 'employee@test.com', password: 'password', name: 'Employee User', role: 'employee' },
-  { email: 'bdo@test.com', password: 'password', name: 'BDO User', role: 'bdo' },
-  { email: 'developer@test.com', password: 'password', name: 'Software Developer', role: 'developer' },
-  { email: 'superadmin@test.com', password: 'password', name: 'Super Admin', role: 'superadmin' }
-]
+import api from '../api/axios'
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [showSpecialization, setShowSpecialization] = useState(false)
   const [specialization, setSpecialization] = useState('Software')
   const [pendingUser, setPendingUser] = useState(null)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const user = mockUsers.find(u => u.email === email && u.password === password)
-    
-    if (user) {
-      if (user.role === 'employee') {
-        // Show specialization selection for employees
-        setPendingUser(user)
-        setShowSpecialization(true)
+    setError('')
+    setLoading(true)
+
+    try {
+      const { data } = await api.post('/auth/login', { email, password })
+      
+      if (data.role === 'employee') {
+        // Auto-detect specialization and login directly
+        localStorage.setItem('token', data.token)
+        onLogin({
+          ...data,
+          specialization: data.specialization || 'General'
+        })
       } else {
-        onLogin({ name: user.name, role: user.role, email: user.email })
+        localStorage.setItem('token', data.token)
+        onLogin(data)
       }
-    } else {
-      setError('Invalid credentials')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.')
+      setLoading(false)
     }
   }
 
   const handleSpecializationSubmit = () => {
     if (pendingUser) {
+      localStorage.setItem('token', pendingUser.token)
       onLogin({ 
         name: pendingUser.name, 
         role: pendingUser.role, 
         email: pendingUser.email,
+        token: pendingUser.token,
         specialization: specialization
       })
     }
@@ -60,10 +63,10 @@ function Login({ onLogin }) {
         {!showSpecialization ? (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Email Address</label>
+              <label>Email or Employee ID</label>
               <input
-                type="email"
-                placeholder="Enter your email"
+                type="text"
+                placeholder="Enter your email or employee ID"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -89,8 +92,8 @@ function Login({ onLogin }) {
                 </button>
               </div>
             </div>
-            <button type="submit" className="btn-green" style={{ width: '100%' }}>
-              Sign In
+            <button type="submit" className="btn-green" style={{ width: '100%' }} disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
         ) : (
@@ -132,13 +135,13 @@ function Login({ onLogin }) {
         )}
         
         <div className="test-accounts">
-          <strong>Test Accounts</strong>
-          <p><strong>Client:</strong> client@test.com / password</p>
-          <p><strong>Admin:</strong> admin@test.com / password</p>
-          <p><strong>Employee:</strong> employee@test.com / password</p>
-          <p><strong>BDO:</strong> bdo@test.com / password</p>
-          <p><strong>Developer:</strong> developer@test.com / password</p>
-          <p><strong>Super Admin:</strong> superadmin@test.com / password</p>
+          <strong>Login Credentials</strong>
+          <p><strong>Super Admin:</strong> superadmin@tcg.com / tcgtech@01</p>
+          <p><strong>Admin:</strong> TCGadmin01 / admin@01</p>
+          <p><strong>Client:</strong> client@tcg.com / client@123</p>
+          <p><strong>Employee:</strong> TT001 / TCGT202601 (Software)</p>
+          <p><strong>Employee:</strong> TD001 / TCGD202601 (Digital Marketing)</p>
+          <p><strong>Employee:</strong> TB001 / TCGB202601 (BDO)</p>
         </div>
       </div>
     </div>
