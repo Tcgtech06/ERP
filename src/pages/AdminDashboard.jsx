@@ -1,68 +1,91 @@
 import { useState, useEffect } from 'react'
+import { subscribeToTasks, updateTask, getEmployees } from '../firebase/firestore'
 
 const mockEmployees = [
-  { id: 1, name: 'John Employee', email: 'employee@test.com', specialization: 'Software' },
-  { id: 2, name: 'Jane Worker', email: 'jane@test.com', specialization: 'Digital Marketing' },
-  { id: 3, name: 'Bob Staff', email: 'bob@test.com', specialization: 'Software' }
+  { id: 1, name: 'Software Employee', email: 'TT001' },
+  { id: 2, name: 'Digital Marketing Employee', email: 'TD001' },
+  { id: 3, name: 'BDO Employee', email: 'TB001' }
 ]
 
 function AdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
+  const [employees, setEmployees] = useState(mockEmployees)
   const [selectedEmployee, setSelectedEmployee] = useState({})
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})
 
   useEffect(() => {
-    loadTasks()
-    loadProjects()
-    const interval = setInterval(() => {
-      loadTasks()
-      loadProjects()
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
+    // Subscribe to real-time tasks updates
+    const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+      setTasks(tasksData)
+    })
 
-  const loadTasks = () => {
-    const savedTasks = localStorage.getItem('tasks')
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks))
+    // Load employees from Firebase
+    loadEmployees()
+
+    return () => unsubscribe()
+  }, [user.uid, user.role])
+
+  const loadEmployees = async () => {
+    try {
+      const employeesData = await getEmployees()
+      if (employeesData.length > 0) {
+        setEmployees(employeesData)
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error)
     }
   }
 
-  const loadProjects = () => {
-    const savedProjects = localStorage.getItem('softwareProjects')
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects))
-    }
-  }
-
-  const handleAssignTask = (taskId, employeeName) => {
+  const handleAssignTask = async (taskId, employeeName) => {
     if (!employeeName) return
 
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    const updatedTasks = allTasks.map(t => {
-      if (t.id === taskId) {
-        const history = t.statusHistory || []
-        return {
-          ...t,
-          status: 'accepted',
-          assignedTo: employeeName,
-          assignedBy: user.name,
-          statusHistory: [...history, {
+    try {
+      const employee = employees.find(emp => emp.name === employeeName)
+      await updateTask(taskId, {
+        status: 'accepted',
+        assignedTo: employee?.uid || employee?.id,
+        assignedToName: employeeName,
+        assignedBy: user.name,
+        statusHistory: [
+          {
             status: 'accepted',
             updatedBy: user.name,
             updatedAt: new Date().toISOString(),
             role: 'admin'
-          }]
-        }
-      }
-      return t
-    })
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks))
-    loadTasks()
-    setSelectedEmployee({ ...selectedEmployee, [taskId]: '' })
+          }
+        ]
+      })
+      
+      setSelectedEmployee({ ...selectedEmployee, [taskId]: '' })
+    } catch (error) {
+      console.error('Error assigning task:', error)
+      alert('Failed to assign task')
+    }
+  }
+
+  const handleUpdateStatus = async (taskId, newStatus) => {
+    if (!newStatus) return
+
+    try {
+      await updateTask(taskId, {
+        status: newStatus,
+        statusHistory: [
+          {
+            status: newStatus,
+            updatedBy: user.name,
+            updatedAt: new Date().toISOString(),
+            role: 'admin'
+          }
+        ]
+      })
+      
+      setStatusUpdate({ ...statusUpdate, [taskId]: '' })
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert('Failed to update task status')
+    }
   }
 
   const handleAssignProject = (projectId, employeeName) => {
@@ -250,9 +273,9 @@ function AdminDashboard({ user, onLogout }) {
                       onChange={(e) => setSelectedEmployee({ ...selectedEmployee, [task.id]: e.target.value })}
                     >
                       <option value="">Select Employee</option>
-                      {mockEmployees.map(emp => (
-                        <option key={emp.id} value={emp.name}>{emp.name}</option>
-                      ))}
+                    {employees.map(emp => (
+                      <option key={emp.id || emp.uid} value={emp.name}>{emp.name}</option>
+                    ))}
                     </select>
                     <button className="btn-green" onClick={() => handleAssignTask(task.id, selectedEmployee[task.id])}>
                       Assign Task

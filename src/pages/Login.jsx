@@ -1,13 +1,5 @@
 import { useState } from 'react'
-
-const mockUsers = [
-  { email: 'superadmin@tcg.com', password: 'tcgtech@01', name: 'Super Admin', role: 'superadmin' },
-  { email: 'TCGadmin01', password: 'admin@01', name: 'Admin User', role: 'admin' },
-  { email: 'client@tcg.com', password: 'client@123', name: 'Client User', role: 'client' },
-  { email: 'TT001', password: 'TCGT202601', name: 'Software Employee', role: 'employee', specialization: 'Software Development' },
-  { email: 'TD001', password: 'TCGD202601', name: 'Digital Marketing Employee', role: 'employee', specialization: 'Digital Marketing' },
-  { email: 'TB001', password: 'TCGB202601', name: 'BDO Employee', role: 'employee', specialization: 'BDO' }
-]
+import { loginUser } from '../firebase/auth'
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -16,27 +8,19 @@ function Login({ onLogin }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    // Simulate API delay
-    setTimeout(() => {
-      const user = mockUsers.find(u => u.email === email && u.password === password)
-      
-      if (user) {
-        onLogin({
-          name: user.name,
-          role: user.role,
-          email: user.email,
-          specialization: user.specialization || null
-        })
-      } else {
-        setError('Invalid credentials. Please check your email/ID and password.')
-      }
+    try {
+      const userData = await loginUser(email, password)
+      onLogin(userData)
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.')
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
   const handleSpecializationSubmit = () => {

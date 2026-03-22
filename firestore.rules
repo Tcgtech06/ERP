@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Helper function to check user role
+    function hasRole(role) {
+      return isSignedIn() && getUserData().role == role;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == userId || hasRole('superadmin'));
+    }
+    
+    // Tasks collection
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (hasRole('client') || hasRole('superadmin'));
+      allow update: if isSignedIn() && (
+        hasRole('admin') || 
+        hasRole('employee') || 
+        hasRole('superadmin') ||
+        (hasRole('client') && resource.data.clientId == request.auth.uid)
+      );
+      allow delete: if isSignedIn() && hasRole('superadmin');
+    }
+    
+    // Software Projects collection
+    match /softwareProjects/{projectId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (hasRole('admin') || hasRole('superadmin'));
+      allow update: if isSignedIn() && (hasRole('admin') || hasRole('employee') || hasRole('superadmin'));
+      allow delete: if isSignedIn() && hasRole('superadmin');
+    }
+  }
+}

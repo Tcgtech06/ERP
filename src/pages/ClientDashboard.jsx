@@ -1,56 +1,46 @@
 import { useState, useEffect } from 'react'
+import { createTask, subscribeToTasks } from '../firebase/firestore'
 
 function ClientDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('medium')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const savedTasks = localStorage.getItem('tasks')
-    if (savedTasks) {
-      const allTasks = JSON.parse(savedTasks)
-      setTasks(allTasks.filter(t => t.clientEmail === user.email))
-    }
-  }, [user.email])
+    // Subscribe to real-time tasks updates
+    const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+      setTasks(tasksData)
+    })
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const savedTasks = localStorage.getItem('tasks')
-      if (savedTasks) {
-        const allTasks = JSON.parse(savedTasks)
-        const userTasks = allTasks.filter(t => t.clientEmail === user.email)
-        setTasks(userTasks)
-      }
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [user.email])
+    return () => unsubscribe()
+  }, [user.uid, user.role])
 
-  const handleCreateTask = (e) => {
+  const handleCreateTask = async (e) => {
     e.preventDefault()
-    const newTask = {
-      id: Date.now(),
-      title,
-      description,
-      priority,
-      status: 'pending',
-      clientEmail: user.email,
-      clientName: user.name,
-      createdAt: new Date().toISOString(),
-      statusHistory: [
-        { status: 'pending', updatedBy: user.name, updatedAt: new Date().toISOString(), role: 'client' }
-      ]
+    setLoading(true)
+
+    try {
+      await createTask({
+        title,
+        description,
+        priority,
+        status: 'pending',
+        clientId: user.uid,
+        clientEmail: user.email,
+        clientName: user.name
+      })
+
+      setTitle('')
+      setDescription('')
+      setPriority('medium')
+    } catch (error) {
+      console.error('Error creating task:', error)
+      alert('Failed to create task')
+    } finally {
+      setLoading(false)
     }
-
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    allTasks.push(newTask)
-    localStorage.setItem('tasks', JSON.stringify(allTasks))
-
-    setTasks([...tasks, newTask])
-    setTitle('')
-    setDescription('')
-    setPriority('medium')
   }
 
   const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -133,7 +123,9 @@ function ClientDashboard({ user, onLogout }) {
               <option value="high">High Priority</option>
             </select>
           </div>
-          <button type="submit" className="btn-green">Create Task</button>
+          <button type="submit" className="btn-green" disabled={loading}>
+            {loading ? 'Creating...' : 'Create Task'}
+          </button>
         </form>
       </div>
 
