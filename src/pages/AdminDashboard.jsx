@@ -121,32 +121,6 @@ function AdminDashboard({ user, onLogout }) {
     setSelectedProjectEmployee({ ...selectedProjectEmployee, [projectId]: '' })
   }
 
-  const handleUpdateStatus = (taskId, newStatus) => {
-    if (!newStatus) return
-
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    const updatedTasks = allTasks.map(t => {
-      if (t.id === taskId) {
-        const history = t.statusHistory || []
-        return {
-          ...t,
-          status: newStatus,
-          statusHistory: [...history, {
-            status: newStatus,
-            updatedBy: user.name,
-            updatedAt: new Date().toISOString(),
-            role: 'admin'
-          }]
-        }
-      }
-      return t
-    })
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks))
-    loadTasks()
-    setStatusUpdate({ ...statusUpdate, [taskId]: '' })
-  }
-
   const pendingTasks = tasks.filter(t => t.status === 'pending')
   const completedTasks = tasks.filter(t => t.status === 'completed')
   const currentTasks = tasks.filter(t => t.status === 'pending' || t.status === 'accepted' || t.status === 'in_progress')

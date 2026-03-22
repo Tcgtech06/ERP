@@ -1,7 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all authenticated users to read and write
+    // Temporary simple rules - allow all authenticated users
+    // Use this if you're having offline/permission issues
+    
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

@@ -70,9 +70,9 @@ function Login({ onLogin }) {
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? '✕' : '◉'}
+                {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
           </div>

@@ -1,26 +1,19 @@
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from './config';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth } from './config';
 
-// User roles and credentials mapping
-const userCredentials = {
-  'superadmin@tcg.com': { password: 'tcgtech@01', role: 'superadmin', name: 'Super Admin' },
-  'TCGadmin01': { password: 'admin@01', role: 'admin', name: 'Admin User' },
-  'client@tcg.com': { password: 'client@123', role: 'client', name: 'Client User' },
-  'TT001': { password: 'TCGT202601', role: 'employee', name: 'Software Employee', specialization: 'Software Development' },
-  'TD001': { password: 'TCGD202601', role: 'employee', name: 'Digital Marketing Employee', specialization: 'Digital Marketing' },
-  'TB001': { password: 'TCGB202601', role: 'employee', name: 'BDO Employee', specialization: 'BDO' }
+// User roles and credentials mapping (for basic user data)
+const userRoles = {
+  'superadmin@tcg.com': { role: 'superadmin', name: 'Super Admin' },
+  'TCGadmin01@tcg.com': { role: 'admin', name: 'Admin User', employeeId: 'TCGadmin01' },
+  'client@tcg.com': { role: 'client', name: 'Client User' },
+  'TT001@tcg.com': { role: 'employee', name: 'Software Employee', specialization: 'Software Development', employeeId: 'TT001' },
+  'TD001@tcg.com': { role: 'employee', name: 'Digital Marketing Employee', specialization: 'Digital Marketing', employeeId: 'TD001' },
+  'TB001@tcg.com': { role: 'employee', name: 'BDO Employee', specialization: 'BDO', employeeId: 'TB001' }
 };
 
 // Custom login function that handles both email and employee ID
 export const loginUser = async (emailOrId, password) => {
   try {
-    // Check if credentials match our predefined users
-    const userCred = userCredentials[emailOrId];
-    if (!userCred || userCred.password !== password) {
-      throw new Error('Invalid credentials');
-    }
-
     // For Firebase Auth, we need to use email format
     let email = emailOrId;
     if (!emailOrId.includes('@')) {
@@ -28,48 +21,51 @@ export const loginUser = async (emailOrId, password) => {
       email = `${emailOrId}@tcg.com`;
     }
 
-    try {
-      // Try to sign in with existing account
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+    // Sign in with Firebase Authentication ONLY
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
 
-      // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        return {
-          uid: user.uid,
-          email: user.email,
-          ...userDoc.data()
-        };
-      }
-    } catch (authError) {
-      if (authError.code === 'auth/user-not-found') {
-        // Create new user account
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // Save user data to Firestore
-        const userData = {
-          name: userCred.name,
-          role: userCred.role,
-          email: emailOrId, // Store original email/ID
-          specialization: userCred.specialization || null,
-          createdAt: new Date().toISOString()
-        };
-
-        await setDoc(doc(db, 'users', user.uid), userData);
-
-        return {
-          uid: user.uid,
-          email: user.email,
-          ...userData
-        };
-      }
-      throw authError;
+    // Get user data from our mapping
+    const userInfo = userRoles[email];
+    
+    if (userInfo) {
+      return {
+        uid: user.uid,
+        email: user.email,
+        name: userInfo.name,
+        role: userInfo.role,
+        specialization: userInfo.specialization || null,
+        employeeId: userInfo.employeeId || null
+      };
     }
+    
+    // Fallback if no mapping found
+    return {
+      uid: user.uid,
+      email: user.email,
+      name: user.email.split('@')[0],
+      role: 'client'
+    };
+    
   } catch (error) {
     console.error('Login error:', error);
-    throw error;
+    
+    // Provide user-friendly error messages
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      throw new Error('Invalid credentials');
+    } else if (error.code === 'auth/user-not-found') {
+      throw new Error('User not found');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Invalid email format');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Too many failed attempts. Please try again later.');
+    } else if (error.code === 'auth/network-request-failed') {
+      throw new Error('Network error. Please check your internet connection.');
+    } else if (error.message) {
+      throw error;
+    } else {
+      throw new Error('Login failed. Please try again.');
+    }
   }
 };
 

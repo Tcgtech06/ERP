@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { subscribeToTasks, createTask, updateTask, deleteTask, getUsers, getEmployees } from '../firebase/firestore'
 import BDOReportsPage from './BDOReportsPage'
 import SoftwareProjectsPage from './SoftwareProjectsPage'
 import ClientManagementPage from './ClientManagementPage'
 import EmployeeManagementPage from './EmployeeManagementPage'
 import AdminManagementPage from './AdminManagementPage'
+import FinancePage from './FinancePage'
 
 const mockEmployees = [
   { id: 1, name: 'John Employee', email: 'employee@test.com' },
@@ -33,23 +35,42 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [noteText, setNoteText] = useState('')
   const [showNoteForm, setShowNoteForm] = useState({})
   const [currentView, setCurrentView] = useState('dashboard')
+  const [clients, setClients] = useState(mockClients)
+  const [employees, setEmployees] = useState(mockEmployees)
 
   useEffect(() => {
-    loadTasks()
+    // Subscribe to real-time tasks updates
+    const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+      setTasks(tasksData)
+    })
+
+    // Load users and employees from Firebase
+    loadUsersAndEmployees()
     loadBdoClients()
     loadSoftwareProjects()
-    const interval = setInterval(() => {
-      loadTasks()
-      loadBdoClients()
-      loadSoftwareProjects()
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
 
-  const loadTasks = () => {
-    const savedTasks = localStorage.getItem('tasks')
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks))
+    return () => unsubscribe()
+  }, [user.uid, user.role])
+
+  const loadUsersAndEmployees = async () => {
+    try {
+      const [usersData, employeesData] = await Promise.all([
+        getUsers(),
+        getEmployees()
+      ])
+      
+      if (usersData.length > 0) {
+        const clientUsers = usersData.filter(u => u.role === 'client')
+        if (clientUsers.length > 0) {
+          setClients(clientUsers)
+        }
+      }
+      
+      if (employeesData.length > 0) {
+        setEmployees(employeesData)
+      }
+    } catch (error) {
+      console.error('Error loading users:', error)
     }
   }
 
@@ -137,23 +158,23 @@ function SuperAdminDashboard({ user, onLogout }) {
     loadBdoClients()
   }
 
-  const handleCreateTask = (e) => {
+  const handleCreateTask = async (e) => {
     e.preventDefault()
     
-    const client = mockClients.find(c => c.email === selectedClient)
-    const employee = mockEmployees.find(emp => emp.name === selectedEmployee)
+    const client = clients.find(c => c.email === selectedClient)
+    const employee = employees.find(emp => emp.name === selectedEmployee)
     
     const newTask = {
-      id: Date.now(),
       title,
       description,
       priority,
       status: employee ? 'accepted' : 'pending',
+      clientId: client?.uid || client?.id,
       clientEmail: client.email,
       clientName: client.name,
-      assignedTo: employee ? employee.name : null,
+      assignedTo: employee ? (employee.uid || employee.id) : null,
+      assignedToName: employee ? employee.name : null,
       assignedBy: user.name,
-      createdAt: new Date().toISOString(),
       createdBy: user.name,
       statusHistory: [
         {
@@ -165,60 +186,66 @@ function SuperAdminDashboard({ user, onLogout }) {
       ]
     }
 
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    allTasks.push(newTask)
-    localStorage.setItem('tasks', JSON.stringify(allTasks))
-
-    setTasks([...tasks, newTask])
-    setTitle('')
-    setDescription('')
-    setPriority('medium')
-    setSelectedClient('')
-    setSelectedEmployee('')
-    setShowCreateForm(false)
+    try {
+      await createTask(newTask)
+      setTitle('')
+      setDescription('')
+      setPriority('medium')
+      setSelectedClient('')
+      setSelectedEmployee('')
+      setShowCreateForm(false)
+    } catch (error) {
+      console.error('Error creating task:', error)
+      alert('Failed to create task')
+    }
   }
 
-  const handleDeleteTask = (taskId) => {
+  const handleDeleteTask = async (taskId) => {
     if (!confirm('Delete this task?')) return
     
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    const updatedTasks = allTasks.filter(t => t.id !== taskId)
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks))
-    loadTasks()
+    try {
+      await deleteTask(taskId)
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      alert('Failed to delete task')
+    }
   }
 
-  const handleUpdateStatus = (taskId, newStatus) => {
+  const handleUpdateStatus = async (taskId, newStatus) => {
     if (!newStatus) return
 
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    const updatedTasks = allTasks.map(t => {
-      if (t.id === taskId) {
-        const history = t.statusHistory || []
-        return {
-          ...t,
-          status: newStatus,
-          statusHistory: [...history, {
+    try {
+      await updateTask(taskId, {
+        status: newStatus,
+        statusHistory: [
+          {
             status: newStatus,
             updatedBy: user.name,
             updatedAt: new Date().toISOString(),
             role: 'superadmin'
-          }]
-        }
-      }
-      return t
-    })
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks))
-    loadTasks()
-    setStatusUpdate({ ...statusUpdate, [taskId]: '' })
+          }
+        ]
+      })
+      
+      setStatusUpdate({ ...statusUpdate, [taskId]: '' })
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert('Failed to update task status')
+    }
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (!confirm('Clear all tasks? This action cannot be undone.')) return
-    localStorage.removeItem('tasks')
-    setTasks([])
+    
+    try {
+      // Delete all tasks one by one
+      for (const task of tasks) {
+        await deleteTask(task.id)
+      }
+    } catch (error) {
+      console.error('Error clearing tasks:', error)
+      alert('Failed to clear all tasks')
+    }
   }
 
   const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -261,6 +288,10 @@ function SuperAdminDashboard({ user, onLogout }) {
       
       {currentView === 'admin-management' && (
         <AdminManagementPage user={user} onBack={() => setCurrentView('dashboard')} />
+      )}
+      
+      {currentView === 'finance' && (
+        <FinancePage user={user} onBack={() => setCurrentView('dashboard')} />
       )}
       
       {currentView === 'dashboard' && (
@@ -440,6 +471,37 @@ function SuperAdminDashboard({ user, onLogout }) {
             <div style={{ marginTop: '12px', padding: '8px', background: 'var(--primary-red)', borderRadius: '6px' }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>
                 {softwareProjects.length} Total Projects
+              </p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => setCurrentView('finance')}
+            style={{
+              background: 'linear-gradient(135deg, #E0F2FE 0%, var(--bg-secondary) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '2px solid #0EA5E9',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <div className="professional-icon finance-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <h3 style={{ marginBottom: '8px', color: '#0EA5E9' }}>Finance Management</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Manage accounts for Main, Software, and Digital Marketing
+            </p>
+            <div style={{ marginTop: '12px', padding: '8px', background: '#0EA5E9', borderRadius: '6px' }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>
+                View All Accounts
               </p>
             </div>
           </div>
@@ -742,8 +804,8 @@ function SuperAdminDashboard({ user, onLogout }) {
                   required
                 >
                   <option value="">Select Client</option>
-                  {mockClients.map(client => (
-                    <option key={client.id} value={client.email}>{client.name}</option>
+                  {clients.map(client => (
+                    <option key={client.id || client.uid} value={client.email}>{client.name}</option>
                   ))}
                 </select>
               </div>
@@ -754,8 +816,8 @@ function SuperAdminDashboard({ user, onLogout }) {
                   onChange={(e) => setSelectedEmployee(e.target.value)}
                 >
                   <option value="">Leave Unassigned</option>
-                  {mockEmployees.map(emp => (
-                    <option key={emp.id} value={emp.name}>{emp.name}</option>
+                  {employees.map(emp => (
+                    <option key={emp.id || emp.uid} value={emp.name}>{emp.name}</option>
                   ))}
                 </select>
               </div>

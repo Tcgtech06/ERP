@@ -1,47 +1,40 @@
 import { useState, useEffect } from 'react'
+import { subscribeToTasks, updateTask } from '../firebase/firestore'
 
 function EmployeeDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [statusUpdate, setStatusUpdate] = useState({})
 
   useEffect(() => {
-    loadTasks()
-    const interval = setInterval(loadTasks, 3000)
-    return () => clearInterval(interval)
-  }, [user.name])
+    // Subscribe to real-time tasks updates
+    const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+      setTasks(tasksData)
+    })
 
-  const loadTasks = () => {
-    const savedTasks = localStorage.getItem('tasks')
-    if (savedTasks) {
-      const allTasks = JSON.parse(savedTasks)
-      setTasks(allTasks.filter(t => t.assignedTo === user.name))
-    }
-  }
+    return () => unsubscribe()
+  }, [user.uid, user.role])
 
-  const handleUpdateStatus = (taskId, newStatus) => {
+  const handleUpdateStatus = async (taskId, newStatus) => {
     if (!newStatus) return
 
-    const savedTasks = localStorage.getItem('tasks')
-    const allTasks = savedTasks ? JSON.parse(savedTasks) : []
-    const updatedTasks = allTasks.map(t => {
-      if (t.id === taskId) {
-        const history = t.statusHistory || []
-        return {
-          ...t,
-          status: newStatus,
-          statusHistory: [...history, {
+    try {
+      await updateTask(taskId, {
+        status: newStatus,
+        statusHistory: [
+          {
             status: newStatus,
             updatedBy: user.name,
             updatedAt: new Date().toISOString(),
             role: 'employee'
-          }]
-        }
-      }
-      return t
-    })
-    localStorage.setItem('tasks', JSON.stringify(updatedTasks))
-    loadTasks()
-    setStatusUpdate({ ...statusUpdate, [taskId]: '' })
+          }
+        ]
+      })
+      
+      setStatusUpdate({ ...statusUpdate, [taskId]: '' })
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert('Failed to update task status')
+    }
   }
 
   const completedTasks = tasks.filter(t => t.status === 'completed')

@@ -99,7 +99,7 @@ export const getTasks = async (userId, userRole) => {
   }
 };
 
-// Real-time tasks listener
+// Real-time tasks listener with timeout
 export const subscribeToTasks = (userId, userRole, callback) => {
   try {
     let q;
@@ -128,16 +128,37 @@ export const subscribeToTasks = (userId, userRole, callback) => {
       );
     }
 
-    return onSnapshot(q, (querySnapshot) => {
-      const tasks = [];
-      querySnapshot.forEach((doc) => {
-        tasks.push({ id: doc.id, ...doc.data() });
-      });
-      callback(tasks);
-    });
+    // Set a timeout for initial load
+    let initialLoadTimeout = setTimeout(() => {
+      console.warn('Firestore taking too long, using empty data');
+      callback([]);
+    }, 5000);
+
+    let isFirstLoad = true;
+
+    return onSnapshot(q, 
+      (querySnapshot) => {
+        if (isFirstLoad) {
+          clearTimeout(initialLoadTimeout);
+          isFirstLoad = false;
+        }
+        
+        const tasks = [];
+        querySnapshot.forEach((doc) => {
+          tasks.push({ id: doc.id, ...doc.data() });
+        });
+        callback(tasks);
+      },
+      (error) => {
+        console.error('Error in tasks subscription:', error);
+        clearTimeout(initialLoadTimeout);
+        callback([]);
+      }
+    );
   } catch (error) {
     console.error('Error subscribing to tasks:', error);
-    throw error;
+    callback([]);
+    return () => {};
   }
 };
 
