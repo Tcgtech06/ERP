@@ -233,3 +233,143 @@ export const updateProject = async (projectId, updates) => {
     throw error;
   }
 };
+
+
+// Finance Software Projects
+export const createFinanceSoftwareProject = async (projectData) => {
+  try {
+    const docRef = await addDoc(collection(db, 'financeSoftwareProjects'), {
+      ...projectData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating finance software project:', error);
+    throw error;
+  }
+};
+
+export const getFinanceSoftwareProjects = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'financeSoftwareProjects'));
+    const projects = [];
+    querySnapshot.forEach((doc) => {
+      projects.push({ id: doc.id, ...doc.data() });
+    });
+    return projects;
+  } catch (error) {
+    console.error('Error getting finance software projects:', error);
+    throw error;
+  }
+};
+
+export const updateFinanceSoftwareProject = async (projectId, updates) => {
+  try {
+    const projectRef = doc(db, 'financeSoftwareProjects', projectId);
+    await updateDoc(projectRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating finance software project:', error);
+    throw error;
+  }
+};
+
+export const deleteFinanceSoftwareProject = async (projectId) => {
+  try {
+    await deleteDoc(doc(db, 'financeSoftwareProjects', projectId));
+  } catch (error) {
+    console.error('Error deleting finance software project:', error);
+    throw error;
+  }
+};
+
+// Finance Digital Marketing Projects
+export const createFinanceDMProject = async (projectData) => {
+  try {
+    const docRef = await addDoc(collection(db, 'financeDMProjects'), {
+      ...projectData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating finance DM project:', error);
+    throw error;
+  }
+};
+
+export const getFinanceDMProjects = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'financeDMProjects'));
+    const projects = [];
+    querySnapshot.forEach((doc) => {
+      projects.push({ id: doc.id, ...doc.data() });
+    });
+    return projects;
+  } catch (error) {
+    console.error('Error getting finance DM projects:', error);
+    throw error;
+  }
+};
+
+export const updateFinanceDMProject = async (projectId, updates) => {
+  try {
+    const projectRef = doc(db, 'financeDMProjects', projectId);
+    await updateDoc(projectRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating finance DM project:', error);
+    throw error;
+  }
+};
+
+export const deleteFinanceDMProject = async (projectId) => {
+  try {
+    await deleteDoc(doc(db, 'financeDMProjects', projectId));
+  } catch (error) {
+    console.error('Error deleting finance DM project:', error);
+    throw error;
+  }
+};
+
+// Real-time listeners for finance projects
+export const subscribeToFinanceSoftwareProjects = (callback) => {
+  try {
+    return onSnapshot(collection(db, 'financeSoftwareProjects'), (querySnapshot) => {
+      const projects = [];
+      querySnapshot.forEach((doc) => {
+        projects.push({ id: doc.id, ...doc.data() });
+      });
+      callback(projects);
+    }, (error) => {
+      console.error('Error in finance software projects subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error subscribing to finance software projects:', error);
+    return () => {};
+  }
+};
+
+export const subscribeToFinanceDMProjects = (callback) => {
+  try {
+    return onSnapshot(collection(db, 'financeDMProjects'), (querySnapshot) => {
+      const projects = [];
+      querySnapshot.forEach((doc) => {
+        projects.push({ id: doc.id, ...doc.data() });
+      });
+      callback(projects);
+    }, (error) => {
+      console.error('Error in finance DM projects subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error subscribing to finance DM projects:', error);
+    return () => {};
+  }
+};

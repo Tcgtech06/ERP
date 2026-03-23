@@ -1,11 +1,23 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { 
+  subscribeToFinanceSoftwareProjects, 
+  subscribeToFinanceDMProjects,
+  createFinanceSoftwareProject,
+  createFinanceDMProject,
+  updateFinanceSoftwareProject,
+  updateFinanceDMProject,
+  deleteFinanceSoftwareProject,
+  deleteFinanceDMProject
+} from '../firebase/firestore'
 
 function FinancePage({ user, onBack }) {
   const [activeTab, setActiveTab] = useState('main')
   const [softwareProjects, setSoftwareProjects] = useState([])
   const [digitalMarketingProjects, setDigitalMarketingProjects] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [editingProject, setEditingProject] = useState(null)
   const [analyticsView, setAnalyticsView] = useState('year') // year, month, day
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
@@ -23,43 +35,132 @@ function FinancePage({ user, onBack }) {
   })
 
   useEffect(() => {
-    loadProjects()
+    // Subscribe to real-time updates from Firebase
+    const unsubscribeSoftware = subscribeToFinanceSoftwareProjects((projects) => {
+      setSoftwareProjects(projects)
+    })
+
+    const unsubscribeDM = subscribeToFinanceDMProjects((projects) => {
+      setDigitalMarketingProjects(projects)
+    })
+
+    return () => {
+      unsubscribeSoftware()
+      unsubscribeDM()
+    }
   }, [])
 
-  const loadProjects = () => {
-    const savedSoftwareProjects = localStorage.getItem('financeSoftwareProjects')
-    const savedDMProjects = localStorage.getItem('financeDMProjects')
-
-    if (savedSoftwareProjects) setSoftwareProjects(JSON.parse(savedSoftwareProjects))
-    if (savedDMProjects) setDigitalMarketingProjects(JSON.parse(savedDMProjects))
-  }
-
-  const handleAddProject = (e) => {
+  const handleAddProject = async (e) => {
     e.preventDefault()
     
     const newProject = {
-      id: Date.now(),
       ...formData,
       budget: parseFloat(formData.budget) || 0,
       expenses: parseFloat(formData.expenses) || 0,
       profit: parseFloat(formData.profit) || 0,
       maintenanceAmount: parseFloat(formData.maintenanceAmount) || 0,
-      createdAt: new Date().toISOString(),
       createdBy: user.name,
       month: new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
     }
 
-    let updatedProjects
-    if (activeTab === 'software') {
-      updatedProjects = [...softwareProjects, newProject]
-      setSoftwareProjects(updatedProjects)
-      localStorage.setItem('financeSoftwareProjects', JSON.stringify(updatedProjects))
-    } else if (activeTab === 'digitalMarketing') {
-      updatedProjects = [...digitalMarketingProjects, newProject]
-      setDigitalMarketingProjects(updatedProjects)
-      localStorage.setItem('financeDMProjects', JSON.stringify(updatedProjects))
+    try {
+      if (activeTab === 'software') {
+        await createFinanceSoftwareProject(newProject)
+      } else if (activeTab === 'digitalMarketing') {
+        await createFinanceDMProject(newProject)
+      }
+
+      setFormData({
+        clientName: '',
+        companyName: '',
+        location: '',
+        budget: '',
+        expenses: '',
+        profit: '',
+        serviceType: 'Software',
+        maintenanceAmount: '',
+        date: new Date().toISOString().split('T')[0]
+      })
+      setShowAddForm(false)
+    } catch (error) {
+      console.error('Error adding project:', error)
+      alert('Failed to add project. Please try again.')
+    }
+  }
+
+  const handleEditProject = (project) => {
+    setEditingProject(project)
+    setFormData({
+      clientName: project.clientName,
+      companyName: project.companyName,
+      location: project.location,
+      budget: project.budget.toString(),
+      expenses: project.expenses.toString(),
+      profit: project.profit.toString(),
+      serviceType: project.serviceType || 'Software',
+      maintenanceAmount: project.maintenanceAmount?.toString() || '',
+      date: project.date
+    })
+    setShowEditForm(true)
+    setShowAddForm(false)
+  }
+
+  const handleUpdateProject = async (e) => {
+    e.preventDefault()
+    
+    const updates = {
+      ...formData,
+      budget: parseFloat(formData.budget) || 0,
+      expenses: parseFloat(formData.expenses) || 0,
+      profit: parseFloat(formData.profit) || 0,
+      maintenanceAmount: parseFloat(formData.maintenanceAmount) || 0,
+      month: new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
     }
 
+    try {
+      if (activeTab === 'software') {
+        await updateFinanceSoftwareProject(editingProject.id, updates)
+      } else if (activeTab === 'digitalMarketing') {
+        await updateFinanceDMProject(editingProject.id, updates)
+      }
+
+      setFormData({
+        clientName: '',
+        companyName: '',
+        location: '',
+        budget: '',
+        expenses: '',
+        profit: '',
+        serviceType: 'Software',
+        maintenanceAmount: '',
+        date: new Date().toISOString().split('T')[0]
+      })
+      setShowEditForm(false)
+      setEditingProject(null)
+    } catch (error) {
+      console.error('Error updating project:', error)
+      alert('Failed to update project. Please try again.')
+    }
+  }
+
+  const handleDeleteProject = async (projectId) => {
+    if (!confirm('Delete this project?')) return
+
+    try {
+      if (activeTab === 'software') {
+        await deleteFinanceSoftwareProject(projectId)
+      } else if (activeTab === 'digitalMarketing') {
+        await deleteFinanceDMProject(projectId)
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      alert('Failed to delete project. Please try again.')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setShowEditForm(false)
+    setEditingProject(null)
     setFormData({
       clientName: '',
       companyName: '',
@@ -71,22 +172,6 @@ function FinancePage({ user, onBack }) {
       maintenanceAmount: '',
       date: new Date().toISOString().split('T')[0]
     })
-    setShowAddForm(false)
-  }
-
-  const handleDeleteProject = (projectId) => {
-    if (!confirm('Delete this project?')) return
-
-    let updatedProjects
-    if (activeTab === 'software') {
-      updatedProjects = softwareProjects.filter(proj => proj.id !== projectId)
-      setSoftwareProjects(updatedProjects)
-      localStorage.setItem('financeSoftwareProjects', JSON.stringify(updatedProjects))
-    } else if (activeTab === 'digitalMarketing') {
-      updatedProjects = digitalMarketingProjects.filter(proj => proj.id !== projectId)
-      setDigitalMarketingProjects(updatedProjects)
-      localStorage.setItem('financeDMProjects', JSON.stringify(updatedProjects))
-    }
   }
 
   const calculateMonthlyStats = () => {
@@ -547,13 +632,26 @@ function FinancePage({ user, onBack }) {
         {(activeTab === 'software' || activeTab === 'digitalMarketing') && (
           <div>
             <div style={{ marginBottom: '20px' }}>
-              <button 
-                className="btn-green" 
-                onClick={() => setShowAddForm(!showAddForm)}
-                style={{ marginBottom: '16px' }}
-              >
-                {showAddForm ? 'Cancel' : '+ Add New Project'}
-              </button>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <button 
+                  className="btn-green" 
+                  onClick={() => {
+                    setShowAddForm(!showAddForm)
+                    setShowEditForm(false)
+                    setEditingProject(null)
+                  }}
+                >
+                  {showAddForm ? 'Cancel' : '+ Add New Project'}
+                </button>
+                {showEditForm && (
+                  <button 
+                    className="btn-red" 
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
 
               {showAddForm && (
                 <div style={{ 
@@ -670,6 +768,122 @@ function FinancePage({ user, onBack }) {
                   </form>
                 </div>
               )}
+
+              {showEditForm && (
+                <div style={{ 
+                  background: 'var(--bg-secondary)', 
+                  padding: '24px', 
+                  borderRadius: '12px',
+                  border: `2px solid #F59E0B`
+                }}>
+                  <h3 style={{ marginBottom: '20px' }}>Edit {activeTab === 'software' ? 'Software' : 'Digital Marketing'} Project</h3>
+                  <form onSubmit={handleUpdateProject}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                      <div className="form-group">
+                        <label>Client Name *</label>
+                        <input
+                          type="text"
+                          placeholder="Enter client name"
+                          value={formData.clientName}
+                          onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Company Name *</label>
+                        <input
+                          type="text"
+                          placeholder="Enter company name"
+                          value={formData.companyName}
+                          onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Location *</label>
+                        <input
+                          type="text"
+                          placeholder="City, State"
+                          value={formData.location}
+                          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Project Date *</label>
+                        <input
+                          type="date"
+                          value={formData.date}
+                          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                          required
+                        />
+                      </div>
+                      {activeTab === 'software' && (
+                        <div className="form-group">
+                          <label>Service Type *</label>
+                          <select
+                            value={formData.serviceType}
+                            onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+                            required
+                          >
+                            <option value="Software">Software</option>
+                            <option value="App">Mobile App</option>
+                            <option value="Website">Website</option>
+                            <option value="System Software">System Software</option>
+                            <option value="AI">AI Solution</option>
+                          </select>
+                        </div>
+                      )}
+                      <div className="form-group">
+                        <label>Budget (₹) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={formData.budget}
+                          onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Expenses (₹) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={formData.expenses}
+                          onChange={(e) => setFormData({ ...formData, expenses: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Profit (₹) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={formData.profit}
+                          onChange={(e) => setFormData({ ...formData, profit: e.target.value })}
+                          required
+                        />
+                      </div>
+                      {activeTab === 'software' && (
+                        <div className="form-group">
+                          <label>Maintenance Amount (₹)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={formData.maintenanceAmount}
+                            onChange={(e) => setFormData({ ...formData, maintenanceAmount: e.target.value })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <button type="submit" className="btn-yellow" style={{ marginTop: '16px' }}>Update Project</button>
+                  </form>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -760,13 +974,22 @@ function FinancePage({ user, onBack }) {
                             📅 {new Date(project.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • Added by {project.createdBy}
                           </p>
                         </div>
-                        <button 
-                          className="btn-red" 
-                          onClick={() => handleDeleteProject(project.id)}
-                          style={{ padding: '8px 16px', fontSize: '14px' }}
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            className="btn-yellow" 
+                            onClick={() => handleEditProject(project)}
+                            style={{ padding: '8px 16px', fontSize: '14px' }}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="btn-red" 
+                            onClick={() => handleDeleteProject(project.id)}
+                            style={{ padding: '8px 16px', fontSize: '14px' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                       
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
