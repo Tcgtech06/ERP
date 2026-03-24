@@ -193,24 +193,63 @@ function FinancePage({ user, onBack }) {
     
     const totalBudget = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.budget, 0)
     const totalExpenses = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.expenses, 0)
-    const totalProfit = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.profit, 0)
-    const totalMaintenance = softwareThisMonth.reduce((sum, p) => sum + p.maintenanceAmount, 0)
+    const totalMaintenance = softwareThisMonth.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
+    // Include maintenance in profit calculation
+    const totalProfit = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.profit, 0) + totalMaintenance
+    
+    // Calculate per day and per week (assuming 30 days per month, 4 weeks per month)
+    const perDayTurnover = totalBudget / 30
+    const perWeekTurnover = totalBudget / 4
+    const perDayExpenses = totalExpenses / 30
+    const perWeekExpenses = totalExpenses / 4
+    const perDayProfit = totalProfit / 30
+    const perWeekProfit = totalProfit / 4
     
     return {
       turnover: totalBudget,
       expenses: totalExpenses,
       profit: totalProfit,
       maintenance: totalMaintenance,
-      projectCount: softwareThisMonth.length + dmThisMonth.length
+      projectCount: softwareThisMonth.length + dmThisMonth.length,
+      perDayTurnover,
+      perWeekTurnover,
+      perDayExpenses,
+      perWeekExpenses,
+      perDayProfit,
+      perWeekProfit
     }
   }
 
-  const calculateTabStats = (projects) => {
+  const calculateTabStats = (projects, includeMaintenance = false) => {
     const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0)
     const totalExpenses = projects.reduce((sum, p) => sum + p.expenses, 0)
-    const totalProfit = projects.reduce((sum, p) => sum + p.profit, 0)
+    let totalProfit = projects.reduce((sum, p) => sum + p.profit, 0)
     
-    return { totalBudget, totalExpenses, totalProfit }
+    // For software projects, add maintenance to profit
+    if (includeMaintenance) {
+      const totalMaintenance = projects.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
+      totalProfit += totalMaintenance
+    }
+    
+    // Calculate per day and per week (assuming 30 days per month, 4 weeks per month)
+    const perDayTurnover = totalBudget / 30
+    const perWeekTurnover = totalBudget / 4
+    const perDayExpenses = totalExpenses / 30
+    const perWeekExpenses = totalExpenses / 4
+    const perDayProfit = totalProfit / 30
+    const perWeekProfit = totalProfit / 4
+    
+    return { 
+      totalBudget, 
+      totalExpenses, 
+      totalProfit,
+      perDayTurnover,
+      perWeekTurnover,
+      perDayExpenses,
+      perWeekExpenses,
+      perDayProfit,
+      perWeekProfit
+    }
   }
 
   const formatCurrency = (amount) => {
@@ -306,8 +345,8 @@ function FinancePage({ user, onBack }) {
   }
 
   const getDepartmentData = () => {
-    const softwareStats = calculateTabStats(softwareProjects)
-    const dmStats = calculateTabStats(digitalMarketingProjects)
+    const softwareStats = calculateTabStats(softwareProjects, true) // Include maintenance for software
+    const dmStats = calculateTabStats(digitalMarketingProjects, false)
     
     return [
       { name: 'Software', value: softwareStats.totalProfit, projects: softwareProjects.length },
@@ -412,6 +451,14 @@ function FinancePage({ user, onBack }) {
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
                   {monthlyStats.projectCount} Projects
                 </p>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Day: {formatCurrency(monthlyStats.perDayTurnover)}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Week: {formatCurrency(monthlyStats.perWeekTurnover)}
+                  </p>
+                </div>
               </div>
               <div style={{
                 padding: '24px',
@@ -423,6 +470,14 @@ function FinancePage({ user, onBack }) {
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--primary-red)' }}>
                   {formatCurrency(monthlyStats.expenses)}
                 </p>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Day: {formatCurrency(monthlyStats.perDayExpenses)}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Week: {formatCurrency(monthlyStats.perWeekExpenses)}
+                  </p>
+                </div>
               </div>
               <div style={{
                 padding: '24px',
@@ -434,6 +489,14 @@ function FinancePage({ user, onBack }) {
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--primary-green)' }}>
                   {formatCurrency(monthlyStats.profit)}
                 </p>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Day: {formatCurrency(monthlyStats.perDayProfit)}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Week: {formatCurrency(monthlyStats.perWeekProfit)}
+                  </p>
+                </div>
               </div>
               <div style={{
                 padding: '24px',
@@ -444,6 +507,9 @@ function FinancePage({ user, onBack }) {
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Maintenance Revenue</p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--dark-yellow)' }}>
                   {formatCurrency(monthlyStats.maintenance)}
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  Included in Net Profit
                 </p>
               </div>
             </div>
@@ -618,7 +684,7 @@ function FinancePage({ user, onBack }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-red)' }}>
-                      {formatCurrency(calculateTabStats(softwareProjects).totalProfit)}
+                      {formatCurrency(calculateTabStats(softwareProjects, true).totalProfit)}
                     </p>
                     <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Total Profit</p>
                   </div>
@@ -630,7 +696,7 @@ function FinancePage({ user, onBack }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--dark-yellow)' }}>
-                      {formatCurrency(calculateTabStats(digitalMarketingProjects).totalProfit)}
+                      {formatCurrency(calculateTabStats(digitalMarketingProjects, false).totalProfit)}
                     </p>
                     <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Total Profit</p>
                   </div>
@@ -906,8 +972,16 @@ function FinancePage({ user, onBack }) {
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Total Budget</p>
                 <p style={{ fontSize: '28px', fontWeight: 'bold', color: getTabColor() }}>
-                  {formatCurrency(calculateTabStats(currentProjects).totalBudget)}
+                  {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').totalBudget)}
                 </p>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Day: {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').perDayTurnover)}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Week: {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').perWeekTurnover)}
+                  </p>
+                </div>
               </div>
               <div style={{
                 padding: '20px',
@@ -917,8 +991,16 @@ function FinancePage({ user, onBack }) {
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Total Expenses</p>
                 <p style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--primary-red)' }}>
-                  {formatCurrency(calculateTabStats(currentProjects).totalExpenses)}
+                  {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').totalExpenses)}
                 </p>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Day: {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').perDayExpenses)}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Week: {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').perWeekExpenses)}
+                  </p>
+                </div>
               </div>
               <div style={{
                 padding: '20px',
@@ -926,10 +1008,18 @@ function FinancePage({ user, onBack }) {
                 borderRadius: '12px',
                 border: '2px solid var(--primary-green)'
               }}>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Total Profit</p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Total Profit{activeTab === 'software' ? ' (incl. Maintenance)' : ''}</p>
                 <p style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--primary-green)' }}>
-                  {formatCurrency(calculateTabStats(currentProjects).totalProfit)}
+                  {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').totalProfit)}
                 </p>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Day: {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').perDayProfit)}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Per Week: {formatCurrency(calculateTabStats(currentProjects, activeTab === 'software').perWeekProfit)}
+                  </p>
+                </div>
               </div>
             </div>
 
