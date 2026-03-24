@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react'
 import { subscribeToTasks, updateTask, getEmployees } from '../firebase/firestore'
 
 const mockEmployees = [
-  { id: 1, name: 'Software Employee', email: 'TT001' },
-  { id: 2, name: 'Digital Marketing Employee', email: 'TD001' },
-  { id: 3, name: 'BDO Employee', email: 'TB001' }
+  { id: 1, name: 'Software Employee', email: 'TT001', employeeId: 'TT001', specialization: 'Software' },
+  { id: 2, name: 'Digital Marketing Employee', email: 'TD001', employeeId: 'TD001', specialization: 'Digital Marketing' },
+  { id: 3, name: 'BDO Employee', email: 'TB001', employeeId: 'TB001', specialization: 'BDO' }
 ]
 
 function AdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
-  const [employees, setEmployees] = useState(mockEmployees)
+  const [employees, setEmployees] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState({})
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})

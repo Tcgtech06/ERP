@@ -8,9 +8,9 @@ import AdminManagementPage from './AdminManagementPage'
 import FinancePage from './FinancePage'
 
 const mockEmployees = [
-  { id: 1, name: 'John Employee', email: 'employee@test.com' },
-  { id: 2, name: 'Jane Worker', email: 'jane@test.com' },
-  { id: 3, name: 'Bob Staff', email: 'bob@test.com' }
+  { id: 1, name: 'Software Employee', email: 'TT001', employeeId: 'TT001', specialization: 'Software' },
+  { id: 2, name: 'Digital Marketing Employee', email: 'TD001', employeeId: 'TD001', specialization: 'Digital Marketing' },
+  { id: 3, name: 'BDO Employee', email: 'TB001', employeeId: 'TB001', specialization: 'BDO' }
 ]
 
 const mockClients = [
@@ -35,8 +35,8 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [noteText, setNoteText] = useState('')
   const [showNoteForm, setShowNoteForm] = useState({})
   const [currentView, setCurrentView] = useState('dashboard')
-  const [clients, setClients] = useState(mockClients)
-  const [employees, setEmployees] = useState(mockEmployees)
+  const [clients, setClients] = useState([])
+  const [employees, setEmployees] = useState([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
