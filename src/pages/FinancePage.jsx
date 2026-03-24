@@ -58,6 +58,8 @@ function FinancePage({ user, onBack }) {
   const handleAddProject = async (e) => {
     e.preventDefault()
     
+    const projectMonth = new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+    
     const newProject = {
       ...formData,
       budget: parseFloat(formData.budget) || 0,
@@ -65,10 +67,11 @@ function FinancePage({ user, onBack }) {
       profit: parseFloat(formData.profit) || 0,
       maintenanceAmount: parseFloat(formData.maintenanceAmount) || 0,
       createdBy: user.name,
-      month: new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      month: projectMonth
     }
 
     console.log('Adding project to Firebase:', activeTab, newProject)
+    console.log('Project month format:', projectMonth)
 
     try {
       if (activeTab === 'software') {
@@ -119,14 +122,19 @@ function FinancePage({ user, onBack }) {
   const handleUpdateProject = async (e) => {
     e.preventDefault()
     
+    const projectMonth = new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+    
     const updates = {
       ...formData,
       budget: parseFloat(formData.budget) || 0,
       expenses: parseFloat(formData.expenses) || 0,
       profit: parseFloat(formData.profit) || 0,
       maintenanceAmount: parseFloat(formData.maintenanceAmount) || 0,
-      month: new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      month: projectMonth
     }
+
+    console.log('Updating project in Firebase:', activeTab, updates)
+    console.log('Updated project month format:', projectMonth)
 
     try {
       if (activeTab === 'software') {
@@ -188,14 +196,29 @@ function FinancePage({ user, onBack }) {
   const calculateMonthlyStats = () => {
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })
     
-    const softwareThisMonth = softwareProjects.filter(p => p.month === currentMonth)
-    const dmThisMonth = digitalMarketingProjects.filter(p => p.month === currentMonth)
+    console.log('Calculating monthly stats for:', currentMonth)
+    console.log('Software projects:', softwareProjects.length, softwareProjects)
+    console.log('DM projects:', digitalMarketingProjects.length, digitalMarketingProjects)
+    
+    const softwareThisMonth = softwareProjects.filter(p => {
+      console.log('Software project month:', p.month, 'Current:', currentMonth, 'Match:', p.month === currentMonth)
+      return p.month === currentMonth
+    })
+    const dmThisMonth = digitalMarketingProjects.filter(p => {
+      console.log('DM project month:', p.month, 'Current:', currentMonth, 'Match:', p.month === currentMonth)
+      return p.month === currentMonth
+    })
+    
+    console.log('Filtered software projects:', softwareThisMonth.length)
+    console.log('Filtered DM projects:', dmThisMonth.length)
     
     const totalBudget = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.budget, 0)
     const totalExpenses = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.expenses, 0)
     const totalMaintenance = softwareThisMonth.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
     // Include maintenance in profit calculation
     const totalProfit = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.profit, 0) + totalMaintenance
+    
+    console.log('Main Account Stats - Budget:', totalBudget, 'Expenses:', totalExpenses, 'Profit:', totalProfit)
     
     // Calculate per day and per week (assuming 30 days per month, 4 weeks per month)
     const perDayTurnover = totalBudget / 30
