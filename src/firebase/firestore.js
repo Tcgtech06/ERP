@@ -238,28 +238,32 @@ export const updateProject = async (projectId, updates) => {
 // Finance Software Projects
 export const createFinanceSoftwareProject = async (projectData) => {
   try {
+    console.log('Firestore: Creating software project...', projectData)
     const docRef = await addDoc(collection(db, 'financeSoftwareProjects'), {
       ...projectData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
+    console.log('Firestore: Software project created successfully with ID:', docRef.id)
     return docRef.id;
   } catch (error) {
-    console.error('Error creating finance software project:', error);
+    console.error('Firestore Error creating finance software project:', error);
     throw error;
   }
 };
 
 export const getFinanceSoftwareProjects = async () => {
   try {
+    console.log('Firestore: Fetching software projects...')
     const querySnapshot = await getDocs(collection(db, 'financeSoftwareProjects'));
     const projects = [];
     querySnapshot.forEach((doc) => {
       projects.push({ id: doc.id, ...doc.data() });
     });
+    console.log('Firestore: Fetched', projects.length, 'software projects')
     return projects;
   } catch (error) {
-    console.error('Error getting finance software projects:', error);
+    console.error('Firestore Error getting finance software projects:', error);
     throw error;
   }
 };
@@ -340,36 +344,40 @@ export const deleteFinanceDMProject = async (projectId) => {
 // Real-time listeners for finance projects
 export const subscribeToFinanceSoftwareProjects = (callback) => {
   try {
+    console.log('Firestore: Setting up real-time listener for software projects')
     return onSnapshot(collection(db, 'financeSoftwareProjects'), (querySnapshot) => {
       const projects = [];
       querySnapshot.forEach((doc) => {
         projects.push({ id: doc.id, ...doc.data() });
       });
+      console.log('Firestore: Real-time update - software projects:', projects.length)
       callback(projects);
     }, (error) => {
-      console.error('Error in finance software projects subscription:', error);
+      console.error('Firestore Error in finance software projects subscription:', error);
       callback([]);
     });
   } catch (error) {
-    console.error('Error subscribing to finance software projects:', error);
+    console.error('Firestore Error subscribing to finance software projects:', error);
     return () => {};
   }
 };
 
 export const subscribeToFinanceDMProjects = (callback) => {
   try {
+    console.log('Firestore: Setting up real-time listener for DM projects')
     return onSnapshot(collection(db, 'financeDMProjects'), (querySnapshot) => {
       const projects = [];
       querySnapshot.forEach((doc) => {
         projects.push({ id: doc.id, ...doc.data() });
       });
+      console.log('Firestore: Real-time update - DM projects:', projects.length)
       callback(projects);
     }, (error) => {
-      console.error('Error in finance DM projects subscription:', error);
+      console.error('Firestore Error in finance DM projects subscription:', error);
       callback([]);
     });
   } catch (error) {
-    console.error('Error subscribing to finance DM projects:', error);
+    console.error('Firestore Error subscribing to finance DM projects:', error);
     return () => {};
   }
 };

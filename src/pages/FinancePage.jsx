@@ -35,16 +35,21 @@ function FinancePage({ user, onBack }) {
   })
 
   useEffect(() => {
+    console.log('Finance Page: Setting up Firebase listeners...')
+    
     // Subscribe to real-time updates from Firebase
     const unsubscribeSoftware = subscribeToFinanceSoftwareProjects((projects) => {
+      console.log('Firebase: Received software projects:', projects.length)
       setSoftwareProjects(projects)
     })
 
     const unsubscribeDM = subscribeToFinanceDMProjects((projects) => {
+      console.log('Firebase: Received DM projects:', projects.length)
       setDigitalMarketingProjects(projects)
     })
 
     return () => {
+      console.log('Finance Page: Cleaning up Firebase listeners')
       unsubscribeSoftware()
       unsubscribeDM()
     }
@@ -63,11 +68,17 @@ function FinancePage({ user, onBack }) {
       month: new Date(formData.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
     }
 
+    console.log('Adding project to Firebase:', activeTab, newProject)
+
     try {
       if (activeTab === 'software') {
-        await createFinanceSoftwareProject(newProject)
+        const id = await createFinanceSoftwareProject(newProject)
+        console.log('Software project created with ID:', id)
+        alert('Software project added successfully!')
       } else if (activeTab === 'digitalMarketing') {
-        await createFinanceDMProject(newProject)
+        const id = await createFinanceDMProject(newProject)
+        console.log('DM project created with ID:', id)
+        alert('Digital Marketing project added successfully!')
       }
 
       setFormData({
@@ -83,8 +94,8 @@ function FinancePage({ user, onBack }) {
       })
       setShowAddForm(false)
     } catch (error) {
-      console.error('Error adding project:', error)
-      alert('Failed to add project. Please try again.')
+      console.error('Error adding project to Firebase:', error)
+      alert(`Failed to add project: ${error.message}`)
     }
   }
 
