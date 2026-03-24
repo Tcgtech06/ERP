@@ -4,6 +4,7 @@ function BDOReportsPage({ user, onBack }) {
   const [bdoClients, setBdoClients] = useState([])
   const [selectedBdoClient, setSelectedBdoClient] = useState(null)
   const [noteText, setNoteText] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     loadBdoClients()
@@ -68,6 +69,23 @@ function BDOReportsPage({ user, onBack }) {
 
   return (
     <div className="container">
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
+        <div className="mobile-menu-header">
+          <h3>Menu</h3>
+          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
+        </div>
+        <div className="mobile-menu-items">
+          <button className="mobile-menu-item" onClick={onBack}>Back to Dashboard</button>
+        </div>
+      </div>
+
       <div className="header">
         <div className="header-content">
           <img src="/Images/logo.png" alt="Logo" className="logo" onError={(e) => e.target.style.display = 'none'} />
@@ -79,6 +97,11 @@ function BDOReportsPage({ user, onBack }) {
         <div className="header-actions">
           <button onClick={onBack} className="btn-yellow">Back to Dashboard</button>
         </div>
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
 
       <div className="stats-grid">

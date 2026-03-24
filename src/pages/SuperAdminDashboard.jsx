@@ -37,6 +37,7 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [currentView, setCurrentView] = useState('dashboard')
   const [clients, setClients] = useState(mockClients)
   const [employees, setEmployees] = useState(mockEmployees)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -161,24 +162,29 @@ function SuperAdminDashboard({ user, onLogout }) {
   const handleCreateTask = async (e) => {
     e.preventDefault()
     
-    const client = clients.find(c => c.email === selectedClient)
+    if (!selectedEmployee) {
+      alert('Please select an assignee')
+      return
+    }
+    
+    const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
     const employee = employees.find(emp => emp.name === selectedEmployee)
     
     const newTask = {
       title,
       description,
       priority,
-      status: employee ? 'accepted' : 'pending',
-      clientId: client?.uid || client?.id,
-      clientEmail: client.email,
-      clientName: client.name,
-      assignedTo: employee ? (employee.uid || employee.id) : null,
-      assignedToName: employee ? employee.name : null,
+      status: 'accepted',
+      clientId: client?.uid || client?.id || null,
+      clientEmail: client?.email || null,
+      clientName: client?.name || 'No specific client',
+      assignedTo: employee ? (employee.uid || employee.id) : selectedEmployee, // Can be Admin or Super Admin
+      assignedToName: selectedEmployee,
       assignedBy: user.name,
       createdBy: user.name,
       statusHistory: [
         {
-          status: employee ? 'accepted' : 'pending',
+          status: 'accepted',
           updatedBy: user.name,
           updatedAt: new Date().toISOString(),
           role: 'superadmin'
@@ -296,6 +302,29 @@ function SuperAdminDashboard({ user, onLogout }) {
       
       {currentView === 'dashboard' && (
         <div className="container">
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
+        <div className="mobile-menu-header">
+          <h3>Menu</h3>
+          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
+        </div>
+        <div className="mobile-menu-items">
+          <button className="mobile-menu-item" onClick={() => { setCurrentView('client-management'); setMobileMenuOpen(false); }}>Client Management</button>
+          <button className="mobile-menu-item" onClick={() => { setCurrentView('employee-management'); setMobileMenuOpen(false); }}>Employee Management</button>
+          <button className="mobile-menu-item" onClick={() => { setCurrentView('admin-management'); setMobileMenuOpen(false); }}>Admin Management</button>
+          <button className="mobile-menu-item" onClick={() => { setCurrentView('bdo-reports'); setMobileMenuOpen(false); }}>BDO Reports</button>
+          <button className="mobile-menu-item" onClick={() => { setCurrentView('software-projects'); setMobileMenuOpen(false); }}>Software Projects</button>
+          <button className="mobile-menu-item" onClick={() => { setCurrentView('finance'); setMobileMenuOpen(false); }}>Finance Management</button>
+          <button className="mobile-menu-item" onClick={onLogout}>Logout</button>
+        </div>
+      </div>
+
       <div className="header">
         <div className="header-content">
           <img src="/Images/logo.png" alt="Logo" className="logo" onError={(e) => e.target.style.display = 'none'} />
@@ -307,6 +336,11 @@ function SuperAdminDashboard({ user, onLogout }) {
         <div className="header-actions">
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
 
       <div className="stats-grid">
@@ -797,27 +831,34 @@ function SuperAdminDashboard({ user, onLogout }) {
                 </select>
               </div>
               <div className="form-group">
-                <label>Assign to Client</label>
-                <select 
-                  value={selectedClient} 
-                  onChange={(e) => setSelectedClient(e.target.value)}
-                  required
-                >
-                  <option value="">Select Client</option>
-                  {clients.map(client => (
-                    <option key={client.id || client.uid} value={client.email}>{client.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Assign to Employee (Optional)</label>
+                <label>Assign to</label>
                 <select 
                   value={selectedEmployee} 
                   onChange={(e) => setSelectedEmployee(e.target.value)}
+                  required
                 >
-                  <option value="">Leave Unassigned</option>
-                  {employees.map(emp => (
-                    <option key={emp.id || emp.uid} value={emp.name}>{emp.name}</option>
+                  <option value="">Select Assignee</option>
+                  <optgroup label="Employees">
+                    {employees.map(emp => (
+                      <option key={emp.id || emp.uid} value={emp.name}>
+                        {emp.name} ({emp.specialization || emp.employeeId || 'Employee'})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Administrators">
+                    <option value="Admin">Admin</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Related Client (Optional)</label>
+                <select 
+                  value={selectedClient} 
+                  onChange={(e) => setSelectedClient(e.target.value)}
+                >
+                  <option value="">No specific client</option>
+                  {clients.map(client => (
+                    <option key={client.id || client.uid} value={client.email}>{client.name}</option>
                   ))}
                 </select>
               </div>

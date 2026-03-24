@@ -7,6 +7,7 @@ function ClientDashboard({ user, onLogout }) {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('medium')
   const [loading, setLoading] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -64,6 +65,23 @@ function ClientDashboard({ user, onLogout }) {
 
   return (
     <div className="container">
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
+        <div className="mobile-menu-header">
+          <h3>Menu</h3>
+          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
+        </div>
+        <div className="mobile-menu-items">
+          <button className="mobile-menu-item" onClick={onLogout}>Logout</button>
+        </div>
+      </div>
+
       <div className="header">
         <div className="header-content">
           <img src="/Images/logo.png" alt="Logo" className="logo" onError={(e) => e.target.style.display = 'none'} />
@@ -75,6 +93,11 @@ function ClientDashboard({ user, onLogout }) {
         <div className="header-actions">
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
 
       <div className="stats-grid">

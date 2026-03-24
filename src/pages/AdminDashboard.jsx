@@ -14,6 +14,7 @@ function AdminDashboard({ user, onLogout }) {
   const [selectedEmployee, setSelectedEmployee] = useState({})
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -39,7 +40,10 @@ function AdminDashboard({ user, onLogout }) {
   }
 
   const handleAssignTask = async (taskId, employeeName) => {
-    if (!employeeName) return
+    if (!employeeName) {
+      alert('Please select an employee')
+      return
+    }
 
     try {
       const employee = employees.find(emp => emp.name === employeeName)
@@ -140,6 +144,23 @@ function AdminDashboard({ user, onLogout }) {
 
   return (
     <div className="container">
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
+        <div className="mobile-menu-header">
+          <h3>Menu</h3>
+          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
+        </div>
+        <div className="mobile-menu-items">
+          <button className="mobile-menu-item" onClick={onLogout}>Logout</button>
+        </div>
+      </div>
+
       <div className="header">
         <div className="header-content">
           <img src="/Images/logo.png" alt="Logo" className="logo" onError={(e) => e.target.style.display = 'none'} />
@@ -151,6 +172,11 @@ function AdminDashboard({ user, onLogout }) {
         <div className="header-actions">
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
 
       <div className="stats-grid">
@@ -245,11 +271,14 @@ function AdminDashboard({ user, onLogout }) {
                     <select
                       value={selectedEmployee[task.id] || ''}
                       onChange={(e) => setSelectedEmployee({ ...selectedEmployee, [task.id]: e.target.value })}
+                      required
                     >
-                      <option value="">Select Employee</option>
-                    {employees.map(emp => (
-                      <option key={emp.id || emp.uid} value={emp.name}>{emp.name}</option>
-                    ))}
+                      <option value="">Select Employee to Assign</option>
+                      {employees.map(emp => (
+                        <option key={emp.id || emp.uid} value={emp.name}>
+                          {emp.name} ({emp.specialization || emp.employeeId || 'Employee'})
+                        </option>
+                      ))}
                     </select>
                     <button className="btn-green" onClick={() => handleAssignTask(task.id, selectedEmployee[task.id])}>
                       Assign Task
