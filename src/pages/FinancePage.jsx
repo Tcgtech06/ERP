@@ -20,6 +20,7 @@ function FinancePage({ user, onBack }) {
     monthlyExpenses: '',
     monthlyProfit: ''
   })
+  const [showCalculationPopup, setShowCalculationPopup] = useState(null) // 'turnover', 'expenses', 'profit', 'maintenance'
   const [softwareProjects, setSoftwareProjects] = useState([])
   const [digitalMarketingProjects, setDigitalMarketingProjects] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
@@ -424,6 +425,178 @@ function FinancePage({ user, onBack }) {
     }).format(amount)
   }
 
+  const getCalculationBreakdown = (type) => {
+    if (mainAccountView === 'monthly') {
+      const softwareThisMonth = softwareProjects.filter(p => {
+        const projectMonth = p.month || new Date(p.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+        return projectMonth === new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      })
+      
+      const activeDMProjects = digitalMarketingProjects.filter(p => {
+        if (p.endDate) {
+          const endDate = new Date(p.endDate)
+          return endDate >= new Date()
+        }
+        return true
+      })
+
+      const swBudget = softwareThisMonth.reduce((sum, p) => sum + (p.budget || 0), 0)
+      const dmBudget = activeDMProjects.reduce((sum, p) => sum + (p.budget || 0), 0)
+      const swExpenses = softwareThisMonth.reduce((sum, p) => sum + (p.expenses || 0), 0)
+      const dmExpenses = activeDMProjects.reduce((sum, p) => sum + (p.expenses || 0), 0)
+      const swProfit = softwareThisMonth.reduce((sum, p) => sum + (p.profit || 0), 0)
+      const dmProfit = activeDMProjects.reduce((sum, p) => sum + (p.profit || 0), 0)
+      const maintenance = softwareThisMonth.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
+
+      if (type === 'turnover') {
+        return {
+          title: 'Monthly Turnover Calculation',
+          lines: [
+            `Software Projects (${softwareThisMonth.length}): ${formatCurrency(swBudget)}`,
+            `DM Projects (${activeDMProjects.length} active): ${formatCurrency(dmBudget)}`,
+            `Total: ${formatCurrency(swBudget + dmBudget)}`
+          ]
+        }
+      } else if (type === 'expenses') {
+        return {
+          title: 'Total Expenses Calculation',
+          lines: [
+            `Software Expenses: ${formatCurrency(swExpenses)}`,
+            `DM Expenses: ${formatCurrency(dmExpenses)}`,
+            `Total: ${formatCurrency(swExpenses + dmExpenses)}`
+          ]
+        }
+      } else if (type === 'profit') {
+        return {
+          title: 'Net Profit Calculation',
+          lines: [
+            `Software Profit: ${formatCurrency(swProfit)}`,
+            `DM Profit: ${formatCurrency(dmProfit)}`,
+            `Maintenance Revenue: ${formatCurrency(maintenance)}`,
+            `Total: ${formatCurrency(swProfit + dmProfit + maintenance)}`
+          ]
+        }
+      } else if (type === 'maintenance') {
+        return {
+          title: 'Maintenance Revenue',
+          lines: [
+            `From ${softwareThisMonth.length} software projects`,
+            `Total: ${formatCurrency(maintenance)}`,
+            `(Included in Net Profit)`
+          ]
+        }
+      }
+    } else {
+      // Yearly view
+      const stats = yearlyStats
+      
+      if (type === 'turnover') {
+        if (yearlyViewMode === 'simulated' && simulationInputs.monthlyBudget) {
+          return {
+            title: 'Yearly Turnover (Simulated)',
+            lines: [
+              `Custom SW Monthly: ${formatCurrency(parseFloat(simulationInputs.monthlyBudget) || 0)}`,
+              `SW Yearly (× 12): ${formatCurrency((parseFloat(simulationInputs.monthlyBudget) || 0) * 12)}`,
+              `DM Yearly (${stats.dm.count} clients × 12): ${formatCurrency(stats.dm.budget)}`,
+              `Total: ${formatCurrency(displayStats.turnover)}`
+            ]
+          }
+        } else if (yearlyViewMode === 'simulated') {
+          return {
+            title: 'Yearly Turnover (Simulated)',
+            lines: [
+              `SW Actual: ${formatCurrency(stats.software.budget)}`,
+              `SW Simulated (× 12): ${formatCurrency(stats.softwareSimulated.budget)}`,
+              `DM Yearly (${stats.dm.count} clients × 12): ${formatCurrency(stats.dm.budget)}`,
+              `Total: ${formatCurrency(displayStats.turnover)}`
+            ]
+          }
+        } else {
+          return {
+            title: 'Yearly Turnover (Actual)',
+            lines: [
+              `SW Projects (${stats.software.count}): ${formatCurrency(stats.software.budget)}`,
+              `DM Recurring (${stats.dm.count} × 12): ${formatCurrency(stats.dm.budget)}`,
+              `Total: ${formatCurrency(stats.turnover)}`
+            ]
+          }
+        }
+      } else if (type === 'expenses') {
+        if (yearlyViewMode === 'simulated' && simulationInputs.monthlyExpenses) {
+          return {
+            title: 'Yearly Expenses (Simulated)',
+            lines: [
+              `Custom SW Monthly: ${formatCurrency(parseFloat(simulationInputs.monthlyExpenses) || 0)}`,
+              `SW Yearly (× 12): ${formatCurrency((parseFloat(simulationInputs.monthlyExpenses) || 0) * 12)}`,
+              `DM Yearly: ${formatCurrency(stats.dm.expenses)}`,
+              `Total: ${formatCurrency(displayStats.expenses)}`
+            ]
+          }
+        } else if (yearlyViewMode === 'simulated') {
+          return {
+            title: 'Yearly Expenses (Simulated)',
+            lines: [
+              `SW Actual: ${formatCurrency(stats.software.expenses)}`,
+              `SW Simulated (× 12): ${formatCurrency(stats.softwareSimulated.expenses)}`,
+              `DM Yearly: ${formatCurrency(stats.dm.expenses)}`,
+              `Total: ${formatCurrency(displayStats.expenses)}`
+            ]
+          }
+        } else {
+          return {
+            title: 'Yearly Expenses (Actual)',
+            lines: [
+              `SW Expenses: ${formatCurrency(stats.software.expenses)}`,
+              `DM Expenses: ${formatCurrency(stats.dm.expenses)}`,
+              `Total: ${formatCurrency(stats.expenses)}`
+            ]
+          }
+        }
+      } else if (type === 'profit') {
+        if (yearlyViewMode === 'simulated' && simulationInputs.monthlyProfit) {
+          return {
+            title: 'Net Profit (Simulated)',
+            lines: [
+              `Custom SW Monthly: ${formatCurrency(parseFloat(simulationInputs.monthlyProfit) || 0)}`,
+              `SW Yearly (× 12): ${formatCurrency((parseFloat(simulationInputs.monthlyProfit) || 0) * 12)}`,
+              `DM Yearly: ${formatCurrency(stats.dm.profit)}`,
+              `Total: ${formatCurrency(displayStats.profit)}`
+            ]
+          }
+        } else if (yearlyViewMode === 'simulated') {
+          return {
+            title: 'Net Profit (Simulated)',
+            lines: [
+              `SW Actual: ${formatCurrency(stats.software.profit)}`,
+              `SW Simulated (× 12): ${formatCurrency(stats.softwareSimulated.profit)}`,
+              `DM Yearly: ${formatCurrency(stats.dm.profit)}`,
+              `Total: ${formatCurrency(displayStats.profit)}`
+            ]
+          }
+        } else {
+          return {
+            title: 'Net Profit (Actual)',
+            lines: [
+              `SW Profit: ${formatCurrency(stats.software.profit)}`,
+              `DM Profit: ${formatCurrency(stats.dm.profit)}`,
+              `Total: ${formatCurrency(stats.profit)}`
+            ]
+          }
+        }
+      } else if (type === 'maintenance') {
+        return {
+          title: 'Maintenance Revenue',
+          lines: [
+            `From ${stats.software.count} software projects`,
+            `Total: ${formatCurrency(stats.maintenance)}`,
+            `(Included in Net Profit)`
+          ]
+        }
+      }
+    }
+    return { title: '', lines: [] }
+  }
+
   const getCurrentProjects = () => {
     if (activeTab === 'software') return softwareProjects
     return digitalMarketingProjects
@@ -697,11 +870,15 @@ function FinancePage({ user, onBack }) {
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              <div style={{
+              <div 
+                onClick={() => setShowCalculationPopup(showCalculationPopup === 'turnover' ? null : 'turnover')}
+                style={{
                 padding: '24px',
                 background: 'linear-gradient(135deg, #DBEAFE 0%, var(--bg-secondary) 100%)',
                 borderRadius: '12px',
-                border: '2px solid #0EA5E9'
+                border: '2px solid #0EA5E9',
+                position: 'relative',
+                cursor: 'pointer'
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                   {mainAccountView === 'monthly' ? 'Monthly' : 'Yearly'} Turnover
@@ -724,12 +901,40 @@ function FinancePage({ user, onBack }) {
                     </p>
                   </div>
                 )}
+                {showCalculationPopup === 'turnover' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '0',
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'white',
+                    border: '2px solid #0EA5E9',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    minWidth: '250px'
+                  }}>
+                    <h4 style={{ fontSize: '13px', marginBottom: '8px', color: '#0EA5E9' }}>
+                      {getCalculationBreakdown('turnover').title}
+                    </h4>
+                    {getCalculationBreakdown('turnover').lines.map((line, idx) => (
+                      <p key={idx} style={{ fontSize: '12px', margin: '4px 0', color: 'var(--text-primary)' }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div style={{
+              <div 
+                onClick={() => setShowCalculationPopup(showCalculationPopup === 'expenses' ? null : 'expenses')}
+                style={{
                 padding: '24px',
                 background: 'linear-gradient(135deg, #FEE2E2 0%, var(--bg-secondary) 100%)',
                 borderRadius: '12px',
-                border: '2px solid var(--primary-red)'
+                border: '2px solid var(--primary-red)',
+                position: 'relative',
+                cursor: 'pointer'
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                   Total Expenses
@@ -748,12 +953,40 @@ function FinancePage({ user, onBack }) {
                     </p>
                   </div>
                 )}
+                {showCalculationPopup === 'expenses' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '0',
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'white',
+                    border: '2px solid var(--primary-red)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    minWidth: '250px'
+                  }}>
+                    <h4 style={{ fontSize: '13px', marginBottom: '8px', color: 'var(--primary-red)' }}>
+                      {getCalculationBreakdown('expenses').title}
+                    </h4>
+                    {getCalculationBreakdown('expenses').lines.map((line, idx) => (
+                      <p key={idx} style={{ fontSize: '12px', margin: '4px 0', color: 'var(--text-primary)' }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div style={{
+              <div 
+                onClick={() => setShowCalculationPopup(showCalculationPopup === 'profit' ? null : 'profit')}
+                style={{
                 padding: '24px',
                 background: 'linear-gradient(135deg, #D1FAE5 0%, var(--bg-secondary) 100%)',
                 borderRadius: '12px',
-                border: '2px solid var(--primary-green)'
+                border: '2px solid var(--primary-green)',
+                position: 'relative',
+                cursor: 'pointer'
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                   Net Profit
@@ -772,12 +1005,40 @@ function FinancePage({ user, onBack }) {
                     </p>
                   </div>
                 )}
+                {showCalculationPopup === 'profit' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '0',
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'white',
+                    border: '2px solid var(--primary-green)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    minWidth: '250px'
+                  }}>
+                    <h4 style={{ fontSize: '13px', marginBottom: '8px', color: 'var(--primary-green)' }}>
+                      {getCalculationBreakdown('profit').title}
+                    </h4>
+                    {getCalculationBreakdown('profit').lines.map((line, idx) => (
+                      <p key={idx} style={{ fontSize: '12px', margin: '4px 0', color: 'var(--text-primary)' }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div style={{
+              <div 
+                onClick={() => setShowCalculationPopup(showCalculationPopup === 'maintenance' ? null : 'maintenance')}
+                style={{
                 padding: '24px',
                 background: 'linear-gradient(135deg, #FEF3C7 0%, var(--bg-secondary) 100%)',
                 borderRadius: '12px',
-                border: '2px solid var(--primary-yellow)'
+                border: '2px solid var(--primary-yellow)',
+                position: 'relative',
+                cursor: 'pointer'
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Maintenance Revenue</p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--dark-yellow)' }}>
@@ -786,6 +1047,30 @@ function FinancePage({ user, onBack }) {
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
                   Included in Net Profit
                 </p>
+                {showCalculationPopup === 'maintenance' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '0',
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'white',
+                    border: '2px solid var(--primary-yellow)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    minWidth: '250px'
+                  }}>
+                    <h4 style={{ fontSize: '13px', marginBottom: '8px', color: 'var(--dark-yellow)' }}>
+                      {getCalculationBreakdown('maintenance').title}
+                    </h4>
+                    {getCalculationBreakdown('maintenance').lines.map((line, idx) => (
+                      <p key={idx} style={{ fontSize: '12px', margin: '4px 0', color: 'var(--text-primary)' }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
