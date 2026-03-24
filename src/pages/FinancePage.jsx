@@ -13,12 +13,14 @@ import {
 
 function FinancePage({ user, onBack }) {
   const [activeTab, setActiveTab] = useState('main')
+  const [mainAccountView, setMainAccountView] = useState('monthly') // monthly or yearly
   const [softwareProjects, setSoftwareProjects] = useState([])
   const [digitalMarketingProjects, setDigitalMarketingProjects] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [analyticsView, setAnalyticsView] = useState('year') // year, month, day
+  const [analyticsFilter, setAnalyticsFilter] = useState('combined') // combined, software, digitalMarketing
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -31,7 +33,9 @@ function FinancePage({ user, onBack }) {
     profit: '',
     serviceType: 'Software',
     maintenanceAmount: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    endDate: '', // For DM projects
+    isActive: true // For DM projects
   })
 
   useEffect(() => {
@@ -195,32 +199,53 @@ function FinancePage({ user, onBack }) {
 
   const calculateMonthlyStats = () => {
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+    const currentDate = new Date()
     
-    console.log('Calculating monthly stats for:', currentMonth)
-    console.log('Software projects:', softwareProjects.length, softwareProjects)
-    console.log('DM projects:', digitalMarketingProjects.length, digitalMarketingProjects)
+    console.log('=== MAIN ACCOUNT CALCULATION ===')
+    console.log('Current Month:', currentMonth)
+    console.log('Total Software Projects:', softwareProjects.length)
+    console.log('Total DM Projects (Recurring):', digitalMarketingProjects.length)
     
+    // SOFTWARE: Only count projects from current month (one-time revenue)
     const softwareThisMonth = softwareProjects.filter(p => {
-      console.log('Software project month:', p.month, 'Current:', currentMonth, 'Match:', p.month === currentMonth)
-      return p.month === currentMonth
-    })
-    const dmThisMonth = digitalMarketingProjects.filter(p => {
-      console.log('DM project month:', p.month, 'Current:', currentMonth, 'Match:', p.month === currentMonth)
-      return p.month === currentMonth
+      const projectMonth = p.month || new Date(p.date).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      return projectMonth === currentMonth
     })
     
-    console.log('Filtered software projects:', softwareThisMonth.length)
-    console.log('Filtered DM projects:', dmThisMonth.length)
+    // DIGITAL MARKETING: Count ALL active projects (recurring monthly revenue)
+    // Only exclude projects that have an endDate in the past
+    const activeDMProjects = digitalMarketingProjects.filter(p => {
+      if (p.endDate) {
+        const endDate = new Date(p.endDate)
+        return endDate >= currentDate
+      }
+      return true // No end date means still active
+    })
     
-    const totalBudget = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.budget, 0)
-    const totalExpenses = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.expenses, 0)
+    console.log('Software Projects (This Month):', softwareThisMonth.length)
+    console.log('DM Projects (Active/Recurring):', activeDMProjects.length)
+    
+    // Calculate totals
+    const softwareBudget = softwareThisMonth.reduce((sum, p) => sum + (p.budget || 0), 0)
+    const dmBudget = activeDMProjects.reduce((sum, p) => sum + (p.budget || 0), 0)
+    const totalBudget = softwareBudget + dmBudget
+    
+    const softwareExpenses = softwareThisMonth.reduce((sum, p) => sum + (p.expenses || 0), 0)
+    const dmExpenses = activeDMProjects.reduce((sum, p) => sum + (p.expenses || 0), 0)
+    const totalExpenses = softwareExpenses + dmExpenses
+    
+    const softwareProfit = softwareThisMonth.reduce((sum, p) => sum + (p.profit || 0), 0)
+    const dmProfit = activeDMProjects.reduce((sum, p) => sum + (p.profit || 0), 0)
     const totalMaintenance = softwareThisMonth.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
-    // Include maintenance in profit calculation
-    const totalProfit = [...softwareThisMonth, ...dmThisMonth].reduce((sum, p) => sum + p.profit, 0) + totalMaintenance
     
-    console.log('Main Account Stats - Budget:', totalBudget, 'Expenses:', totalExpenses, 'Profit:', totalProfit)
+    // Total profit includes both departments + maintenance
+    const totalProfit = softwareProfit + dmProfit + totalMaintenance
     
-    // Calculate per day and per week (assuming 30 days per month, 4 weeks per month)
+    console.log('Software Budget:', softwareBudget, 'DM Budget (Recurring):', dmBudget, 'Total:', totalBudget)
+    console.log('Software Expenses:', softwareExpenses, 'DM Expenses:', dmExpenses, 'Total:', totalExpenses)
+    console.log('Software Profit:', softwareProfit, 'DM Profit:', dmProfit, 'Maintenance:', totalMaintenance, 'Total:', totalProfit)
+    
+    // Calculate per day and per week
     const perDayTurnover = totalBudget / 30
     const perWeekTurnover = totalBudget / 4
     const perDayExpenses = totalExpenses / 30
@@ -233,13 +258,65 @@ function FinancePage({ user, onBack }) {
       expenses: totalExpenses,
       profit: totalProfit,
       maintenance: totalMaintenance,
-      projectCount: softwareThisMonth.length + dmThisMonth.length,
+      projectCount: softwareThisMonth.length + activeDMProjects.length,
+      softwareCount: softwareThisMonth.length,
+      dmCount: activeDMProjects.length,
       perDayTurnover,
       perWeekTurnover,
       perDayExpenses,
       perWeekExpenses,
       perDayProfit,
       perWeekProfit
+    }
+  }
+
+  const calculateYearlyStats = () => {
+    const currentYear = new Date().getFullYear()
+    
+    // SOFTWARE: Count all projects from current year
+    const softwareThisYear = softwareProjects.filter(p => {
+      const projectYear = new Date(p.date).getFullYear()
+      return projectYear === currentYear
+    })
+    
+    // DIGITAL MARKETING: Multiply monthly revenue by number of months active in current year
+    let dmYearlyBudget = 0
+    let dmYearlyExpenses = 0
+    let dmYearlyProfit = 0
+    
+    digitalMarketingProjects.forEach(p => {
+      const startDate = new Date(p.date)
+      const endDate = p.endDate ? new Date(p.endDate) : new Date()
+      
+      // Calculate months active in current year
+      let monthsActive = 0
+      for (let month = 0; month < 12; month++) {
+        const checkDate = new Date(currentYear, month, 15)
+        if (checkDate >= startDate && checkDate <= endDate) {
+          monthsActive++
+        }
+      }
+      
+      dmYearlyBudget += (p.budget || 0) * monthsActive
+      dmYearlyExpenses += (p.expenses || 0) * monthsActive
+      dmYearlyProfit += (p.profit || 0) * monthsActive
+    })
+    
+    const softwareBudget = softwareThisYear.reduce((sum, p) => sum + (p.budget || 0), 0)
+    const softwareExpenses = softwareThisYear.reduce((sum, p) => sum + (p.expenses || 0), 0)
+    const softwareProfit = softwareThisYear.reduce((sum, p) => sum + (p.profit || 0), 0)
+    const totalMaintenance = softwareThisYear.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
+    
+    const totalBudget = softwareBudget + dmYearlyBudget
+    const totalExpenses = softwareExpenses + dmYearlyExpenses
+    const totalProfit = softwareProfit + dmYearlyProfit + totalMaintenance
+    
+    return {
+      turnover: totalBudget,
+      expenses: totalExpenses,
+      profit: totalProfit,
+      maintenance: totalMaintenance,
+      projectCount: softwareThisYear.length + digitalMarketingProjects.length
     }
   }
 
@@ -295,10 +372,19 @@ function FinancePage({ user, onBack }) {
 
   // Analytics Functions
   const getYearlyData = () => {
-    const allProjects = [...softwareProjects, ...digitalMarketingProjects]
+    let projectsToAnalyze = []
+    
+    if (analyticsFilter === 'software') {
+      projectsToAnalyze = softwareProjects
+    } else if (analyticsFilter === 'digitalMarketing') {
+      projectsToAnalyze = digitalMarketingProjects
+    } else {
+      projectsToAnalyze = [...softwareProjects, ...digitalMarketingProjects]
+    }
+    
     const yearlyData = {}
     
-    allProjects.forEach(project => {
+    projectsToAnalyze.forEach(project => {
       const year = new Date(project.date).getFullYear()
       if (!yearlyData[year]) {
         yearlyData[year] = { year, budget: 0, expenses: 0, profit: 0, projects: 0 }
@@ -306,6 +392,10 @@ function FinancePage({ user, onBack }) {
       yearlyData[year].budget += project.budget
       yearlyData[year].expenses += project.expenses
       yearlyData[year].profit += project.profit
+      // Add maintenance for software projects
+      if (analyticsFilter !== 'digitalMarketing' && project.maintenanceAmount) {
+        yearlyData[year].profit += project.maintenanceAmount
+      }
       yearlyData[year].projects += 1
     })
     
@@ -313,11 +403,20 @@ function FinancePage({ user, onBack }) {
   }
 
   const getMonthlyData = () => {
-    const allProjects = [...softwareProjects, ...digitalMarketingProjects]
+    let projectsToAnalyze = []
+    
+    if (analyticsFilter === 'software') {
+      projectsToAnalyze = softwareProjects
+    } else if (analyticsFilter === 'digitalMarketing') {
+      projectsToAnalyze = digitalMarketingProjects
+    } else {
+      projectsToAnalyze = [...softwareProjects, ...digitalMarketingProjects]
+    }
+    
     const monthlyData = {}
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     
-    allProjects.forEach(project => {
+    projectsToAnalyze.forEach(project => {
       const date = new Date(project.date)
       const year = date.getFullYear()
       const month = date.getMonth()
@@ -330,6 +429,10 @@ function FinancePage({ user, onBack }) {
         monthlyData[key].budget += project.budget
         monthlyData[key].expenses += project.expenses
         monthlyData[key].profit += project.profit
+        // Add maintenance for software projects
+        if (analyticsFilter !== 'digitalMarketing' && project.maintenanceAmount) {
+          monthlyData[key].profit += project.maintenanceAmount
+        }
         monthlyData[key].projects += 1
       }
     })
@@ -338,11 +441,20 @@ function FinancePage({ user, onBack }) {
   }
 
   const getDailyData = () => {
-    const allProjects = [...softwareProjects, ...digitalMarketingProjects]
+    let projectsToAnalyze = []
+    
+    if (analyticsFilter === 'software') {
+      projectsToAnalyze = softwareProjects
+    } else if (analyticsFilter === 'digitalMarketing') {
+      projectsToAnalyze = digitalMarketingProjects
+    } else {
+      projectsToAnalyze = [...softwareProjects, ...digitalMarketingProjects]
+    }
+    
     const dailyData = {}
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate()
     
-    allProjects.forEach(project => {
+    projectsToAnalyze.forEach(project => {
       const date = new Date(project.date)
       const year = date.getFullYear()
       const month = date.getMonth()
@@ -356,6 +468,10 @@ function FinancePage({ user, onBack }) {
         dailyData[key].budget += project.budget
         dailyData[key].expenses += project.expenses
         dailyData[key].profit += project.profit
+        // Add maintenance for software projects
+        if (analyticsFilter !== 'digitalMarketing' && project.maintenanceAmount) {
+          dailyData[key].profit += project.maintenanceAmount
+        }
         dailyData[key].projects += 1
       }
     })
@@ -387,7 +503,10 @@ function FinancePage({ user, onBack }) {
 
   const currentProjects = getCurrentProjects()
   const monthlyStats = calculateMonthlyStats()
+  const yearlyStats = calculateYearlyStats()
+  const displayStats = mainAccountView === 'monthly' ? monthlyStats : yearlyStats
   const currentMonth = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+  const currentYear = new Date().getFullYear()
 
   return (
     <div className="container">
@@ -458,7 +577,41 @@ function FinancePage({ user, onBack }) {
 
         {activeTab === 'main' && (
           <div>
-            <h2 style={{ marginBottom: '20px' }}>Company Overview - {currentMonth}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+              <h2>Company Overview - {mainAccountView === 'monthly' ? currentMonth : currentYear}</h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setMainAccountView('monthly')}
+                  style={{
+                    padding: '8px 16px',
+                    background: mainAccountView === 'monthly' ? '#0EA5E9' : 'var(--bg-primary)',
+                    color: mainAccountView === 'monthly' ? 'white' : 'var(--text-primary)',
+                    border: '1px solid #0EA5E9',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px'
+                  }}
+                >
+                  Monthly View
+                </button>
+                <button
+                  onClick={() => setMainAccountView('yearly')}
+                  style={{
+                    padding: '8px 16px',
+                    background: mainAccountView === 'yearly' ? '#0EA5E9' : 'var(--bg-primary)',
+                    color: mainAccountView === 'yearly' ? 'white' : 'var(--text-primary)',
+                    border: '1px solid #0EA5E9',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px'
+                  }}
+                >
+                  Yearly View
+                </button>
+              </div>
+            </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
               <div style={{
@@ -467,21 +620,26 @@ function FinancePage({ user, onBack }) {
                 borderRadius: '12px',
                 border: '2px solid #0EA5E9'
               }}>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Monthly Turnover</p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  {mainAccountView === 'monthly' ? 'Monthly' : 'Yearly'} Turnover
+                </p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#0EA5E9' }}>
-                  {formatCurrency(monthlyStats.turnover)}
+                  {formatCurrency(displayStats.turnover)}
                 </p>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-                  {monthlyStats.projectCount} Projects
+                  {displayStats.projectCount} Projects
+                  {mainAccountView === 'monthly' && ` (${monthlyStats.softwareCount} SW + ${monthlyStats.dmCount} DM)`}
                 </p>
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Per Day: {formatCurrency(monthlyStats.perDayTurnover)}
-                  </p>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Per Week: {formatCurrency(monthlyStats.perWeekTurnover)}
-                  </p>
-                </div>
+                {mainAccountView === 'monthly' && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Per Day: {formatCurrency(monthlyStats.perDayTurnover)}
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Per Week: {formatCurrency(monthlyStats.perWeekTurnover)}
+                    </p>
+                  </div>
+                )}
               </div>
               <div style={{
                 padding: '24px',
@@ -491,16 +649,18 @@ function FinancePage({ user, onBack }) {
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Total Expenses</p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--primary-red)' }}>
-                  {formatCurrency(monthlyStats.expenses)}
+                  {formatCurrency(displayStats.expenses)}
                 </p>
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Per Day: {formatCurrency(monthlyStats.perDayExpenses)}
-                  </p>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Per Week: {formatCurrency(monthlyStats.perWeekExpenses)}
-                  </p>
-                </div>
+                {mainAccountView === 'monthly' && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Per Day: {formatCurrency(monthlyStats.perDayExpenses)}
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Per Week: {formatCurrency(monthlyStats.perWeekExpenses)}
+                    </p>
+                  </div>
+                )}
               </div>
               <div style={{
                 padding: '24px',
@@ -510,16 +670,18 @@ function FinancePage({ user, onBack }) {
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Net Profit</p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--primary-green)' }}>
-                  {formatCurrency(monthlyStats.profit)}
+                  {formatCurrency(displayStats.profit)}
                 </p>
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Per Day: {formatCurrency(monthlyStats.perDayProfit)}
-                  </p>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Per Week: {formatCurrency(monthlyStats.perWeekProfit)}
-                  </p>
-                </div>
+                {mainAccountView === 'monthly' && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Per Day: {formatCurrency(monthlyStats.perDayProfit)}
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Per Week: {formatCurrency(monthlyStats.perWeekProfit)}
+                    </p>
+                  </div>
+                )}
               </div>
               <div style={{
                 padding: '24px',
@@ -529,7 +691,7 @@ function FinancePage({ user, onBack }) {
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Maintenance Revenue</p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--dark-yellow)' }}>
-                  {formatCurrency(monthlyStats.maintenance)}
+                  {formatCurrency(displayStats.maintenance)}
                 </p>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
                   Included in Net Profit
@@ -588,6 +750,53 @@ function FinancePage({ user, onBack }) {
                     Daily
                   </button>
                 </div>
+              </div>
+
+              {/* Department Filter */}
+              <div style={{ marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '14px', fontWeight: '600', marginRight: '8px', alignSelf: 'center' }}>Filter by:</span>
+                <button
+                  onClick={() => setAnalyticsFilter('combined')}
+                  style={{
+                    padding: '6px 14px',
+                    background: analyticsFilter === 'combined' ? '#10B981' : 'var(--bg-primary)',
+                    color: analyticsFilter === 'combined' ? 'white' : 'var(--text-primary)',
+                    border: '1px solid #10B981',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  Combined
+                </button>
+                <button
+                  onClick={() => setAnalyticsFilter('software')}
+                  style={{
+                    padding: '6px 14px',
+                    background: analyticsFilter === 'software' ? 'var(--primary-red)' : 'var(--bg-primary)',
+                    color: analyticsFilter === 'software' ? 'white' : 'var(--text-primary)',
+                    border: '1px solid var(--primary-red)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  Software Only
+                </button>
+                <button
+                  onClick={() => setAnalyticsFilter('digitalMarketing')}
+                  style={{
+                    padding: '6px 14px',
+                    background: analyticsFilter === 'digitalMarketing' ? 'var(--dark-yellow)' : 'var(--bg-primary)',
+                    color: analyticsFilter === 'digitalMarketing' ? 'white' : 'var(--text-primary)',
+                    border: '1px solid var(--dark-yellow)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  Digital Marketing Only
+                </button>
               </div>
 
               {/* Date Filters */}
