@@ -14,6 +14,7 @@ import {
 function FinancePage({ user, onBack }) {
   const [activeTab, setActiveTab] = useState('main')
   const [mainAccountView, setMainAccountView] = useState('monthly') // monthly or yearly
+  const [yearlyViewMode, setYearlyViewMode] = useState('actual') // actual or simulated
   const [softwareProjects, setSoftwareProjects] = useState([])
   const [digitalMarketingProjects, setDigitalMarketingProjects] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
@@ -273,50 +274,94 @@ function FinancePage({ user, onBack }) {
   const calculateYearlyStats = () => {
     const currentYear = new Date().getFullYear()
     
-    // SOFTWARE: Count all projects from current year
+    // SOFTWARE: Count all projects from current year (ONE-TIME revenue)
     const softwareThisYear = softwareProjects.filter(p => {
       const projectYear = new Date(p.date).getFullYear()
       return projectYear === currentYear
     })
     
-    // DIGITAL MARKETING: Multiply monthly revenue by number of months active in current year
-    let dmYearlyBudget = 0
-    let dmYearlyExpenses = 0
-    let dmYearlyProfit = 0
-    
-    digitalMarketingProjects.forEach(p => {
-      const startDate = new Date(p.date)
-      const endDate = p.endDate ? new Date(p.endDate) : new Date()
-      
-      // Calculate months active in current year
-      let monthsActive = 0
-      for (let month = 0; month < 12; month++) {
-        const checkDate = new Date(currentYear, month, 15)
-        if (checkDate >= startDate && checkDate <= endDate) {
-          monthsActive++
-        }
-      }
-      
-      dmYearlyBudget += (p.budget || 0) * monthsActive
-      dmYearlyExpenses += (p.expenses || 0) * monthsActive
-      dmYearlyProfit += (p.profit || 0) * monthsActive
-    })
-    
     const softwareBudget = softwareThisYear.reduce((sum, p) => sum + (p.budget || 0), 0)
     const softwareExpenses = softwareThisYear.reduce((sum, p) => sum + (p.expenses || 0), 0)
     const softwareProfit = softwareThisYear.reduce((sum, p) => sum + (p.profit || 0), 0)
-    const totalMaintenance = softwareThisYear.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
+    const softwareMaintenance = softwareThisYear.reduce((sum, p) => sum + (p.maintenanceAmount || 0), 0)
     
-    const totalBudget = softwareBudget + dmYearlyBudget
-    const totalExpenses = softwareExpenses + dmYearlyExpenses
-    const totalProfit = softwareProfit + dmYearlyProfit + totalMaintenance
+    // DIGITAL MARKETING: Calculate yearly recurring revenue (multiply by 12 months)
+    // Only count active DM projects
+    const activeDMProjects = digitalMarketingProjects.filter(p => {
+      if (p.endDate) {
+        const endDate = new Date(p.endDate)
+        return endDate >= new Date()
+      }
+      return true
+    })
+    
+    const dmMonthlyBudget = activeDMProjects.reduce((sum, p) => sum + (p.budget || 0), 0)
+    const dmMonthlyExpenses = activeDMProjects.reduce((sum, p) => sum + (p.expenses || 0), 0)
+    const dmMonthlyProfit = activeDMProjects.reduce((sum, p) => sum + (p.profit || 0), 0)
+    
+    // Multiply by 12 for yearly recurring revenue
+    const dmYearlyBudget = dmMonthlyBudget * 12
+    const dmYearlyExpenses = dmMonthlyExpenses * 12
+    const dmYearlyProfit = dmMonthlyProfit * 12
+    
+    // SOFTWARE SIMULATION: What if we had same software projects every month?
+    const softwareSimulatedBudget = softwareBudget * 12
+    const softwareSimulatedExpenses = softwareExpenses * 12
+    const softwareSimulatedProfit = (softwareProfit + softwareMaintenance) * 12
+    
+    // COMBINED ACTUAL: Software (once) + DM (yearly recurring)
+    const combinedBudget = softwareBudget + dmYearlyBudget
+    const combinedExpenses = softwareExpenses + dmYearlyExpenses
+    const combinedProfit = softwareProfit + softwareMaintenance + dmYearlyProfit
+    
+    // COMBINED SIMULATED: Software (simulated yearly) + DM (yearly recurring)
+    const combinedSimulatedBudget = softwareSimulatedBudget + dmYearlyBudget
+    const combinedSimulatedExpenses = softwareSimulatedExpenses + dmYearlyExpenses
+    const combinedSimulatedProfit = softwareSimulatedProfit + dmYearlyProfit
+    
+    console.log('=== YEARLY CALCULATION ===')
+    console.log('Software (Actual):', { budget: softwareBudget, expenses: softwareExpenses, profit: softwareProfit + softwareMaintenance })
+    console.log('Software (Simulated x12):', { budget: softwareSimulatedBudget, expenses: softwareSimulatedExpenses, profit: softwareSimulatedProfit })
+    console.log('DM (Yearly Recurring):', { budget: dmYearlyBudget, expenses: dmYearlyExpenses, profit: dmYearlyProfit })
+    console.log('Combined (Actual):', { budget: combinedBudget, expenses: combinedExpenses, profit: combinedProfit })
+    console.log('Combined (Simulated):', { budget: combinedSimulatedBudget, expenses: combinedSimulatedExpenses, profit: combinedSimulatedProfit })
     
     return {
-      turnover: totalBudget,
-      expenses: totalExpenses,
-      profit: totalProfit,
-      maintenance: totalMaintenance,
-      projectCount: softwareThisYear.length + digitalMarketingProjects.length
+      // Actual values
+      turnover: combinedBudget,
+      expenses: combinedExpenses,
+      profit: combinedProfit,
+      maintenance: softwareMaintenance,
+      projectCount: softwareThisYear.length + activeDMProjects.length,
+      
+      // Breakdown
+      software: {
+        budget: softwareBudget,
+        expenses: softwareExpenses,
+        profit: softwareProfit + softwareMaintenance,
+        count: softwareThisYear.length
+      },
+      dm: {
+        budget: dmYearlyBudget,
+        expenses: dmYearlyExpenses,
+        profit: dmYearlyProfit,
+        count: activeDMProjects.length,
+        monthlyBudget: dmMonthlyBudget,
+        monthlyExpenses: dmMonthlyExpenses,
+        monthlyProfit: dmMonthlyProfit
+      },
+      
+      // Simulation
+      softwareSimulated: {
+        budget: softwareSimulatedBudget,
+        expenses: softwareSimulatedExpenses,
+        profit: softwareSimulatedProfit
+      },
+      combinedSimulated: {
+        budget: combinedSimulatedBudget,
+        expenses: combinedSimulatedExpenses,
+        profit: combinedSimulatedProfit
+      }
     }
   }
 
