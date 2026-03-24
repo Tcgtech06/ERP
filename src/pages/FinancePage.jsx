@@ -549,7 +549,25 @@ function FinancePage({ user, onBack }) {
   const currentProjects = getCurrentProjects()
   const monthlyStats = calculateMonthlyStats()
   const yearlyStats = calculateYearlyStats()
-  const displayStats = mainAccountView === 'monthly' ? monthlyStats : yearlyStats
+  
+  // For yearly view, use actual or simulated based on toggle
+  let displayStats
+  if (mainAccountView === 'monthly') {
+    displayStats = monthlyStats
+  } else {
+    if (yearlyViewMode === 'simulated') {
+      displayStats = {
+        turnover: yearlyStats.combinedSimulated.budget,
+        expenses: yearlyStats.combinedSimulated.expenses,
+        profit: yearlyStats.combinedSimulated.profit,
+        maintenance: yearlyStats.maintenance,
+        projectCount: yearlyStats.projectCount
+      }
+    } else {
+      displayStats = yearlyStats
+    }
+  }
+  
   const currentMonth = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })
   const currentYear = new Date().getFullYear()
 
@@ -667,6 +685,7 @@ function FinancePage({ user, onBack }) {
               }}>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                   {mainAccountView === 'monthly' ? 'Monthly' : 'Yearly'} Turnover
+                  {mainAccountView === 'yearly' && yearlyViewMode === 'simulated' && ' (Simulated)'}
                 </p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#0EA5E9' }}>
                   {formatCurrency(displayStats.turnover)}
@@ -692,7 +711,10 @@ function FinancePage({ user, onBack }) {
                 borderRadius: '12px',
                 border: '2px solid var(--primary-red)'
               }}>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Total Expenses</p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Total Expenses
+                  {mainAccountView === 'yearly' && yearlyViewMode === 'simulated' && ' (Simulated)'}
+                </p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--primary-red)' }}>
                   {formatCurrency(displayStats.expenses)}
                 </p>
@@ -713,7 +735,10 @@ function FinancePage({ user, onBack }) {
                 borderRadius: '12px',
                 border: '2px solid var(--primary-green)'
               }}>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Net Profit</p>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Net Profit
+                  {mainAccountView === 'yearly' && yearlyViewMode === 'simulated' && ' (Simulated)'}
+                </p>
                 <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--primary-green)' }}>
                   {formatCurrency(displayStats.profit)}
                 </p>
@@ -743,6 +768,106 @@ function FinancePage({ user, onBack }) {
                 </p>
               </div>
             </div>
+
+            {/* Yearly View Mode Toggle */}
+            {mainAccountView === 'yearly' && (
+              <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '2px solid #F59E0B' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: '600', fontSize: '14px' }}>Yearly View Mode:</span>
+                  <button
+                    onClick={() => setYearlyViewMode('actual')}
+                    style={{
+                      padding: '6px 14px',
+                      background: yearlyViewMode === 'actual' ? '#10B981' : 'var(--bg-primary)',
+                      color: yearlyViewMode === 'actual' ? 'white' : 'var(--text-primary)',
+                      border: '1px solid #10B981',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    Actual Revenue
+                  </button>
+                  <button
+                    onClick={() => setYearlyViewMode('simulated')}
+                    style={{
+                      padding: '6px 14px',
+                      background: yearlyViewMode === 'simulated' ? '#F59E0B' : 'var(--bg-primary)',
+                      color: yearlyViewMode === 'simulated' ? 'white' : 'var(--text-primary)',
+                      border: '1px solid #F59E0B',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    What-If Simulation (SW × 12)
+                  </button>
+                </div>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px', marginBottom: 0 }}>
+                  {yearlyViewMode === 'actual' 
+                    ? 'Showing actual revenue: Software (one-time) + DM (recurring monthly × 12)'
+                    : 'Simulation: What if we had the same software projects every month for a year?'}
+                </p>
+              </div>
+            )}
+
+            {/* Yearly Breakdown */}
+            {mainAccountView === 'yearly' && (
+              <div style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '12px', border: '2px solid #0EA5E9', marginBottom: '24px' }}>
+                <h3 style={{ marginBottom: '20px' }}>Yearly Revenue Breakdown ({currentYear})</h3>
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {/* Software Actual */}
+                  <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', borderLeft: '4px solid var(--primary-red)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <h4 style={{ marginBottom: '4px' }}>Software Projects (Actual - One-time)</h4>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{yearlyStats.software.count} projects completed this year</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Revenue: {formatCurrency(yearlyStats.software.budget)}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Expenses: {formatCurrency(yearlyStats.software.expenses)}</p>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary-green)' }}>Profit: {formatCurrency(yearlyStats.software.profit)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Software Simulated */}
+                  <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', borderLeft: '4px solid #F59E0B' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <h4 style={{ marginBottom: '4px' }}>Software Projects (What-If Simulation)</h4>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>If we had same projects every month (× 12)</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Revenue: {formatCurrency(yearlyStats.softwareSimulated.budget)}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Expenses: {formatCurrency(yearlyStats.softwareSimulated.expenses)}</p>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#F59E0B' }}>Profit: {formatCurrency(yearlyStats.softwareSimulated.profit)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DM Recurring */}
+                  <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', borderLeft: '4px solid var(--dark-yellow)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <h4 style={{ marginBottom: '4px' }}>Digital Marketing (Recurring Monthly)</h4>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {yearlyStats.dm.count} active clients × 12 months
+                        </p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                          Monthly: {formatCurrency(yearlyStats.dm.monthlyBudget)} revenue, {formatCurrency(yearlyStats.dm.monthlyProfit)} profit
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Revenue: {formatCurrency(yearlyStats.dm.budget)}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Expenses: {formatCurrency(yearlyStats.dm.expenses)}</p>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary-green)' }}>Profit: {formatCurrency(yearlyStats.dm.profit)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Analytics Section */}
             <div style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '12px', border: '2px solid #0EA5E9', marginBottom: '24px' }}>
