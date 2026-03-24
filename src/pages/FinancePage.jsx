@@ -15,6 +15,11 @@ function FinancePage({ user, onBack }) {
   const [activeTab, setActiveTab] = useState('main')
   const [mainAccountView, setMainAccountView] = useState('monthly') // monthly or yearly
   const [yearlyViewMode, setYearlyViewMode] = useState('actual') // actual or simulated
+  const [simulationInputs, setSimulationInputs] = useState({
+    monthlyBudget: '',
+    monthlyExpenses: '',
+    monthlyProfit: ''
+  })
   const [softwareProjects, setSoftwareProjects] = useState([])
   const [digitalMarketingProjects, setDigitalMarketingProjects] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
@@ -305,9 +310,24 @@ function FinancePage({ user, onBack }) {
     const dmYearlyProfit = dmMonthlyProfit * 12
     
     // SOFTWARE SIMULATION: What if we had same software projects every month?
-    const softwareSimulatedBudget = softwareBudget * 12
-    const softwareSimulatedExpenses = softwareExpenses * 12
-    const softwareSimulatedProfit = (softwareProfit + softwareMaintenance) * 12
+    // Use custom inputs if provided, otherwise use actual data
+    let softwareSimulatedBudget, softwareSimulatedExpenses, softwareSimulatedProfit
+    
+    if (simulationInputs.monthlyBudget && simulationInputs.monthlyExpenses) {
+      // Use custom simulation inputs
+      const customBudget = parseFloat(simulationInputs.monthlyBudget) || 0
+      const customExpenses = parseFloat(simulationInputs.monthlyExpenses) || 0
+      const customProfit = parseFloat(simulationInputs.monthlyProfit) || (customBudget - customExpenses)
+      
+      softwareSimulatedBudget = customBudget * 12
+      softwareSimulatedExpenses = customExpenses * 12
+      softwareSimulatedProfit = customProfit * 12
+    } else {
+      // Use actual data multiplied by 12
+      softwareSimulatedBudget = softwareBudget * 12
+      softwareSimulatedExpenses = softwareExpenses * 12
+      softwareSimulatedProfit = (softwareProfit + softwareMaintenance) * 12
+    }
     
     // COMBINED ACTUAL: Software (once) + DM (yearly recurring)
     const combinedBudget = softwareBudget + dmYearlyBudget
@@ -772,7 +792,7 @@ function FinancePage({ user, onBack }) {
             {/* Yearly View Mode Toggle */}
             {mainAccountView === 'yearly' && (
               <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '2px solid #F59E0B' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
                   <span style={{ fontWeight: '600', fontSize: '14px' }}>Yearly View Mode:</span>
                   <button
                     onClick={() => setYearlyViewMode('actual')}
@@ -803,10 +823,72 @@ function FinancePage({ user, onBack }) {
                     What-If Simulation (SW × 12)
                   </button>
                 </div>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px', marginBottom: 0 }}>
+                
+                {yearlyViewMode === 'simulated' && (
+                  <div style={{ marginTop: '16px', padding: '16px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ marginBottom: '12px', fontSize: '14px' }}>Custom Simulation Inputs (Optional)</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                      Enter average monthly values to simulate yearly revenue. Leave empty to use actual data × 12.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                      <div className="form-group">
+                        <label style={{ fontSize: '13px' }}>Avg Monthly Budget (₹)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g., 100000"
+                          value={simulationInputs.monthlyBudget}
+                          onChange={(e) => setSimulationInputs({ ...simulationInputs, monthlyBudget: e.target.value })}
+                          style={{ padding: '8px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontSize: '13px' }}>Avg Monthly Expenses (₹)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g., 40000"
+                          value={simulationInputs.monthlyExpenses}
+                          onChange={(e) => setSimulationInputs({ ...simulationInputs, monthlyExpenses: e.target.value })}
+                          style={{ padding: '8px', fontSize: '13px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontSize: '13px' }}>Avg Monthly Profit (₹) - Optional</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Auto-calculated if empty"
+                          value={simulationInputs.monthlyProfit}
+                          onChange={(e) => setSimulationInputs({ ...simulationInputs, monthlyProfit: e.target.value })}
+                          style={{ padding: '8px', fontSize: '13px' }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSimulationInputs({ monthlyBudget: '', monthlyExpenses: '', monthlyProfit: '' })}
+                      style={{
+                        marginTop: '12px',
+                        padding: '6px 12px',
+                        background: 'var(--primary-red)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      Clear Custom Inputs
+                    </button>
+                  </div>
+                )}
+                
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', marginBottom: 0 }}>
                   {yearlyViewMode === 'actual' 
                     ? 'Showing actual revenue: Software (one-time) + DM (recurring monthly × 12)'
-                    : 'Simulation: What if we had the same software projects every month for a year?'}
+                    : simulationInputs.monthlyBudget && simulationInputs.monthlyExpenses
+                      ? 'Using custom simulation inputs to project yearly revenue'
+                      : 'Simulation: What if we had the same software projects every month for a year?'}
                 </p>
               </div>
             )}
@@ -836,7 +918,11 @@ function FinancePage({ user, onBack }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
                       <div>
                         <h4 style={{ marginBottom: '4px' }}>Software Projects (What-If Simulation)</h4>
-                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>If we had same projects every month (× 12)</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {simulationInputs.monthlyBudget && simulationInputs.monthlyExpenses
+                            ? 'Based on custom monthly inputs × 12 months'
+                            : 'If we had same projects every month (× 12)'}
+                        </p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Revenue: {formatCurrency(yearlyStats.softwareSimulated.budget)}</p>
