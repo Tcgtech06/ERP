@@ -62,7 +62,7 @@ function SuperAdminDashboard({ user, onLogout }) {
       ])
       
       console.log('Users data:', usersData);
-      console.log('Employees data:', employeesData);
+      console.log('Employees data from Firebase:', employeesData);
       
       if (usersData.length > 0) {
         const clientUsers = usersData.filter(u => u.role === 'client')
@@ -72,13 +72,25 @@ function SuperAdminDashboard({ user, onLogout }) {
         }
       }
       
+      // ALWAYS use mockEmployees to ensure all 3 types are available
+      // Firebase data will be merged if available
       if (employeesData.length > 0) {
-        setEmployees(employeesData)
-        console.log('✅ Employees set:', employeesData.length);
-        console.log('Employee details:', employeesData);
+        console.log('✅ Using Firebase employees:', employeesData.length);
+        // Merge Firebase data with mock data, prioritizing Firebase
+        const mergedEmployees = [...mockEmployees];
+        employeesData.forEach(fbEmp => {
+          const existingIndex = mergedEmployees.findIndex(m => m.employeeId === fbEmp.employeeId);
+          if (existingIndex >= 0) {
+            mergedEmployees[existingIndex] = fbEmp;
+          } else {
+            mergedEmployees.push(fbEmp);
+          }
+        });
+        setEmployees(mergedEmployees);
+        console.log('✅ Merged employees:', mergedEmployees);
       } else {
-        console.warn('⚠️ No employees found in Firebase! Using mock data...');
-        setEmployees(mockEmployees)
+        console.log('⚠️ No Firebase employees, using mock data');
+        setEmployees(mockEmployees);
       }
     } catch (error) {
       console.error('❌ Error loading users:', error)

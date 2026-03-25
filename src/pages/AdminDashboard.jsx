@@ -32,13 +32,26 @@ function AdminDashboard({ user, onLogout }) {
     try {
       console.log('📥 Admin: Loading employees...');
       const employeesData = await getEmployees()
-      console.log('Employees data:', employeesData);
+      console.log('Employees data from Firebase:', employeesData);
+      
+      // ALWAYS ensure all 3 employee types are available
       if (employeesData.length > 0) {
-        setEmployees(employeesData)
-        console.log('✅ Employees set:', employeesData.length);
+        console.log('✅ Using Firebase employees:', employeesData.length);
+        // Merge Firebase data with mock data
+        const mergedEmployees = [...mockEmployees];
+        employeesData.forEach(fbEmp => {
+          const existingIndex = mergedEmployees.findIndex(m => m.employeeId === fbEmp.employeeId);
+          if (existingIndex >= 0) {
+            mergedEmployees[existingIndex] = fbEmp;
+          } else {
+            mergedEmployees.push(fbEmp);
+          }
+        });
+        setEmployees(mergedEmployees);
+        console.log('✅ Merged employees:', mergedEmployees);
       } else {
-        console.warn('⚠️ No employees found! Using mock data...');
-        setEmployees(mockEmployees)
+        console.log('⚠️ No Firebase employees, using mock data');
+        setEmployees(mockEmployees);
       }
     } catch (error) {
       console.error('❌ Error loading employees:', error)
