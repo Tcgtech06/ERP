@@ -100,7 +100,7 @@ export const getTasks = async (userId, userRole) => {
 };
 
 // Real-time tasks listener with timeout
-export const subscribeToTasks = (userId, userRole, callback) => {
+export const subscribeToTasks = (userId, userRole, callback, userEmail = null) => {
   try {
     let q;
     
@@ -116,9 +116,9 @@ export const subscribeToTasks = (userId, userRole, callback) => {
         orderBy('createdAt', 'desc')
       );
     } else if (userRole === 'employee') {
+      // Query by UID or email
       q = query(
         collection(db, 'tasks'),
-        where('assignedTo', '==', userId),
         orderBy('createdAt', 'desc')
       );
     } else if (userRole === 'superadmin') {
@@ -143,10 +143,20 @@ export const subscribeToTasks = (userId, userRole, callback) => {
           isFirstLoad = false;
         }
         
-        const tasks = [];
+        let tasks = [];
         querySnapshot.forEach((doc) => {
           tasks.push({ id: doc.id, ...doc.data() });
         });
+        
+        // Filter employee tasks by UID or email
+        if (userRole === 'employee') {
+          tasks = tasks.filter(task => 
+            task.assignedTo === userId || 
+            task.assignedTo === userEmail ||
+            task.assignedToEmail === userEmail
+          );
+        }
+        
         callback(tasks);
       },
       (error) => {

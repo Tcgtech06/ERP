@@ -137,8 +137,9 @@ function AdminDashboard({ user, onLogout }) {
         clientId: client?.uid || client?.id || null,
         clientEmail: client?.email || null,
         clientName: client?.name || 'No specific client',
-        assignedTo: employee ? (employee.uid || employee.id) : null,
+        assignedTo: employee?.uid || employee?.email || null,
         assignedToName: selectedEmployeeForTask,
+        assignedToEmail: employee?.email || selectedEmployeeForTask,
         assignedBy: user.name,
         createdBy: user.name,
         attachments: uploadedFiles,
@@ -179,8 +180,9 @@ function AdminDashboard({ user, onLogout }) {
       const employee = employees.find(emp => emp.name === employeeName)
       await updateTask(taskId, {
         status: 'accepted',
-        assignedTo: employee?.uid || employee?.id,
+        assignedTo: employee?.uid || employee?.email,
         assignedToName: employeeName,
+        assignedToEmail: employee?.email || employeeName,
         assignedBy: user.name,
         statusHistory: [
           {

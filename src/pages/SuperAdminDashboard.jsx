@@ -269,6 +269,11 @@ function SuperAdminDashboard({ user, onLogout }) {
       for (const assigneeName of assignees) {
         const employee = employees.find(emp => emp.name === assigneeName)
         
+        // Use Firebase UID if available, otherwise use email as fallback
+        const assignedToId = employee?.uid || employee?.email || assigneeName
+        
+        console.log('Creating task for:', assigneeName, 'with ID:', assignedToId)
+        
         const newTask = {
           title,
           description,
@@ -277,8 +282,9 @@ function SuperAdminDashboard({ user, onLogout }) {
           clientId: client?.uid || client?.id || null,
           clientEmail: client?.email || null,
           clientName: client?.name || 'No specific client',
-          assignedTo: employee ? (employee.uid || employee.id) : assigneeName,
+          assignedTo: assignedToId,
           assignedToName: assigneeName,
+          assignedToEmail: employee?.email || assigneeName,
           assignedBy: user.name,
           createdBy: user.name,
           attachments: uploadedFiles,
@@ -1125,7 +1131,7 @@ function SuperAdminDashboard({ user, onLogout }) {
                   )}
                   {task.assignedTo && (
                     <p style={{ marginTop: '12px', fontWeight: '500' }}>
-                      Assigned to: {task.assignedTo}
+                      Assigned to: {task.assignedToName || task.assignedToEmail || task.assignedTo}
                     </p>
                   )}
                   {task.assignedBy && (

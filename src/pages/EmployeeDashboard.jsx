@@ -10,11 +10,12 @@ function EmployeeDashboard({ user, onLogout }) {
   useEffect(() => {
     // Subscribe to real-time tasks updates
     const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+      console.log('Employee tasks loaded:', tasksData.length)
       setTasks(tasksData)
-    })
+    }, user.email)
 
     return () => unsubscribe()
-  }, [user.uid, user.role])
+  }, [user.uid, user.role, user.email])
 
   const handleUpdateStatus = async (taskId, newStatus) => {
     if (!newStatus) return
