@@ -382,7 +382,7 @@ function SuperAdminDashboard({ user, onLogout }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card desktop-only-card">
         <h2>Management Modules</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
           <div 

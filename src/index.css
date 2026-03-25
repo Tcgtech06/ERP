@@ -1047,6 +1047,10 @@ textarea {
     display: none;
   }
 
+  .desktop-only-card {
+    display: none !important;
+  }
+
   .mobile-menu-btn {
     display: flex !important;
   }
