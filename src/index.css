@@ -66,23 +66,22 @@ body {
 .mobile-menu-btn span {
   display: block !important;
   height: 3px;
+  width: 100%;
   border-radius: 2px;
   transition: all 0.3s ease;
+  min-height: 3px;
 }
 
 .mobile-menu-btn span:nth-child(1) {
-  background: var(--primary-red);
-  width: 100%;
+  background: var(--primary-red) !important;
 }
 
 .mobile-menu-btn span:nth-child(2) {
-  background: var(--primary-green);
-  width: 100%;
+  background: var(--primary-green) !important;
 }
 
 .mobile-menu-btn span:nth-child(3) {
-  background: var(--primary-yellow);
-  width: 100%;
+  background: var(--primary-yellow) !important;
 }
 
 .mobile-menu-overlay {

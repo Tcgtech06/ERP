@@ -361,9 +361,9 @@ function SuperAdminDashboard({ user, onLogout }) {
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
         <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
-          <span></span>
-          <span></span>
-          <span></span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
         </button>
       </div>
 

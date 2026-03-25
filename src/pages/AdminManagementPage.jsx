@@ -120,9 +120,9 @@ function AdminManagementPage({ user, onBack }) {
           <button onClick={onBack} className="btn-yellow">Back to Dashboard</button>
         </div>
         <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
-          <span></span>
-          <span></span>
-          <span></span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
         </button>
       </div>
 
