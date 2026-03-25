@@ -55,8 +55,8 @@ body {
   padding: 8px;
   cursor: pointer;
   z-index: 1001;
-  width: 35px;
-  height: 24px;
+  width: 30px;
+  height: 18px;
   position: relative;
   flex-direction: column;
   justify-content: space-between;
@@ -65,16 +65,16 @@ body {
 
 .mobile-menu-btn span {
   display: block !important;
-  height: 3px;
+  height: 2.5px;
   width: 100%;
   border-radius: 2px;
   transition: all 0.3s ease;
-  min-height: 3px;
+  min-height: 2.5px;
 }
 
 .mobile-menu-btn span:nth-child(1) {
   background: var(--primary-red) !important;
-  width: 80%;
+  width: 70%;
 }
 
 .mobile-menu-btn span:nth-child(2) {
@@ -84,7 +84,7 @@ body {
 
 .mobile-menu-btn span:nth-child(3) {
   background: var(--primary-yellow) !important;
-  width: 80%;
+  width: 70%;
 }
 
 .mobile-menu-overlay {
