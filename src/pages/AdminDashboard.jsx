@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeToTasks, updateTask, getEmployees } from '../firebase/firestore'
+import { subscribeToTasks, updateTask, getEmployees, createTask, getUsers } from '../firebase/firestore'
 
 const mockEmployees = [
   { id: 1, name: 'Software Employee', email: 'TT001', employeeId: 'TT001', specialization: 'Software' },
@@ -15,6 +15,13 @@ function AdminDashboard({ user, onLogout }) {
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [priority, setPriority] = useState('medium')
+  const [selectedClient, setSelectedClient] = useState('')
+  const [selectedEmployeeForTask, setSelectedEmployeeForTask] = useState('')
+  const [clients, setClients] = useState([])
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -22,11 +29,22 @@ function AdminDashboard({ user, onLogout }) {
       setTasks(tasksData)
     })
 
-    // Load employees from Firebase
+    // Load employees and clients from Firebase
     loadEmployees()
+    loadClients()
 
     return () => unsubscribe()
   }, [user.uid, user.role])
+
+  const loadClients = async () => {
+    try {
+      const usersData = await getUsers()
+      const clientUsers = usersData.filter(u => u.role === 'client')
+      setClients(clientUsers)
+    } catch (error) {
+      console.error('Error loading clients:', error)
+    }
+  }
 
   const loadEmployees = async () => {
     try {
@@ -56,6 +74,54 @@ function AdminDashboard({ user, onLogout }) {
     } catch (error) {
       console.error('❌ Error loading employees:', error)
       setEmployees(mockEmployees)
+    }
+  }
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault()
+    
+    if (!selectedEmployeeForTask) {
+      alert('Please select an employee to assign the task')
+      return
+    }
+    
+    const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
+    const employee = employees.find(emp => emp.name === selectedEmployeeForTask)
+    
+    const newTask = {
+      title,
+      description,
+      priority,
+      status: 'accepted',
+      clientId: client?.uid || client?.id || null,
+      clientEmail: client?.email || null,
+      clientName: client?.name || 'No specific client',
+      assignedTo: employee ? (employee.uid || employee.id) : null,
+      assignedToName: selectedEmployeeForTask,
+      assignedBy: user.name,
+      createdBy: user.name,
+      statusHistory: [
+        {
+          status: 'accepted',
+          updatedBy: user.name,
+          updatedAt: new Date().toISOString(),
+          role: 'admin'
+        }
+      ]
+    }
+
+    try {
+      await createTask(newTask)
+      setTitle('')
+      setDescription('')
+      setPriority('medium')
+      setSelectedClient('')
+      setSelectedEmployeeForTask('')
+      setShowCreateForm(false)
+      alert('Task created and assigned successfully!')
+    } catch (error) {
+      console.error('Error creating task:', error)
+      alert('Failed to create task')
     }
   }
 
@@ -272,6 +338,79 @@ function AdminDashboard({ user, onLogout }) {
           </div>
         </div>
       )}
+
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <h2>Admin Controls</h2>
+          <button className="btn-green" onClick={() => setShowCreateForm(!showCreateForm)}>
+            {showCreateForm ? 'Cancel' : 'Create New Task'}
+          </button>
+        </div>
+
+        {showCreateForm && (
+          <div style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: '12px', marginTop: '20px' }}>
+            <h3 style={{ marginBottom: '20px' }}>Create New Task</h3>
+            <form onSubmit={handleCreateTask}>
+              <div className="form-group">
+                <label>Task Title</label>
+                <input
+                  type="text"
+                  placeholder="Enter task title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  placeholder="Describe the task in detail"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  rows="4"
+                />
+              </div>
+              <div className="form-group">
+                <label>Priority Level</label>
+                <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Assign to Employee</label>
+                <select 
+                  value={selectedEmployeeForTask} 
+                  onChange={(e) => setSelectedEmployeeForTask(e.target.value)}
+                  required
+                >
+                  <option value="">Select Employee</option>
+                  {employees.map(emp => (
+                    <option key={emp.id || emp.uid} value={emp.name}>
+                      {emp.name} ({emp.specialization || emp.employeeId || 'Employee'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Related Client (Optional)</label>
+                <select 
+                  value={selectedClient} 
+                  onChange={(e) => setSelectedClient(e.target.value)}
+                >
+                  <option value="">No specific client</option>
+                  {clients.map(client => (
+                    <option key={client.id || client.uid} value={client.email}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="btn-green">Create Task</button>
+            </form>
+          </div>
+        )}
+      </div>
 
       <div className="card">
         <h2>Pending Tasks ({pendingTasks.length})</h2>

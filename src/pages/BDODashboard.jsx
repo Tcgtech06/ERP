@@ -13,6 +13,7 @@ function BDODashboard({ user, onLogout }) {
   const [statusUpdate, setStatusUpdate] = useState({})
   const [customStatusUpdate, setCustomStatusUpdate] = useState({})
   const [visibleNotes, setVisibleNotes] = useState(new Set())
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const predefinedStatuses = [
     'Meeting scheduled',
@@ -182,6 +183,23 @@ function BDODashboard({ user, onLogout }) {
 
   return (
     <div className="container">
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={`mobile-menu-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      
+      {/* Mobile Menu */}
+      <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
+        <div className="mobile-menu-header">
+          <h3>Menu</h3>
+          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
+        </div>
+        <div className="mobile-menu-items">
+          <button className="mobile-menu-item" onClick={onLogout}>Logout</button>
+        </div>
+      </div>
+
       <div className="header">
         <div className="header-content">
           <img src="/Images/logo.png" alt="Logo" className="logo" onError={(e) => e.target.style.display = 'none'} />
@@ -193,6 +211,11 @@ function BDODashboard({ user, onLogout }) {
         <div className="header-actions">
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+        </button>
       </div>
 
       <div style={{ display: 'none' }} className="mobile-add-client-btn">

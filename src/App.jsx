@@ -7,6 +7,7 @@ import ClientDashboard from './pages/ClientDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import EmployeeDashboard from './pages/EmployeeDashboard'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
+import BDODashboard from './pages/BDODashboard'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -68,6 +69,10 @@ function App() {
     case 'admin':
       return <AdminDashboard user={user} onLogout={handleLogout} />
     case 'employee':
+      // Check specialization for BDO
+      if (user.specialization === 'BDO') {
+        return <BDODashboard user={user} onLogout={handleLogout} />
+      }
       return <EmployeeDashboard user={user} onLogout={handleLogout} />
     case 'superadmin':
       return <SuperAdminDashboard user={user} onLogout={handleLogout} />
