@@ -389,3 +389,125 @@ export const subscribeToFinanceDMProjects = (callback) => {
     return () => {};
   }
 };
+
+// BDO Clients collection functions
+export const createBDOClient = async (clientData) => {
+  try {
+    const docRef = await addDoc(collection(db, 'bdoClients'), {
+      ...clientData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: clientData.notes || []
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating BDO client:', error);
+    throw error;
+  }
+};
+
+export const getBDOClients = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'bdoClients'));
+    const clients = [];
+    querySnapshot.forEach((doc) => {
+      clients.push({ id: doc.id, ...doc.data() });
+    });
+    return clients;
+  } catch (error) {
+    console.error('Error getting BDO clients:', error);
+    throw error;
+  }
+};
+
+export const updateBDOClient = async (clientId, updates) => {
+  try {
+    const clientRef = doc(db, 'bdoClients', clientId);
+    await updateDoc(clientRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating BDO client:', error);
+    throw error;
+  }
+};
+
+export const subscribeToBDOClients = (callback) => {
+  try {
+    return onSnapshot(collection(db, 'bdoClients'), (querySnapshot) => {
+      const clients = [];
+      querySnapshot.forEach((doc) => {
+        clients.push({ id: doc.id, ...doc.data() });
+      });
+      callback(clients);
+    }, (error) => {
+      console.error('Error in BDO clients subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error subscribing to BDO clients:', error);
+    return () => {};
+  }
+};
+
+// Software Projects (for developer assignment) collection functions
+export const createSoftwareProject = async (projectData) => {
+  try {
+    const docRef = await addDoc(collection(db, 'softwareProjects'), {
+      ...projectData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: projectData.notes || []
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating software project:', error);
+    throw error;
+  }
+};
+
+export const getSoftwareProjects = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'softwareProjects'));
+    const projects = [];
+    querySnapshot.forEach((doc) => {
+      projects.push({ id: doc.id, ...doc.data() });
+    });
+    return projects;
+  } catch (error) {
+    console.error('Error getting software projects:', error);
+    throw error;
+  }
+};
+
+export const updateSoftwareProject = async (projectId, updates) => {
+  try {
+    const projectRef = doc(db, 'softwareProjects', projectId);
+    await updateDoc(projectRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating software project:', error);
+    throw error;
+  }
+};
+
+export const subscribeToSoftwareProjects = (callback) => {
+  try {
+    return onSnapshot(collection(db, 'softwareProjects'), (querySnapshot) => {
+      const projects = [];
+      querySnapshot.forEach((doc) => {
+        projects.push({ id: doc.id, ...doc.data() });
+      });
+      callback(projects);
+    }, (error) => {
+      console.error('Error in software projects subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error subscribing to software projects:', error);
+    return () => {};
+  }
+};

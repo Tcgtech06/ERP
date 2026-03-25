@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeToTasks, createTask, updateTask, deleteTask, getUsers, getEmployees } from '../firebase/firestore'
+import { subscribeToTasks, createTask, updateTask, deleteTask, getUsers, getEmployees, subscribeToBDOClients, updateBDOClient, subscribeToSoftwareProjects, updateSoftwareProject } from '../firebase/firestore'
 import BDOReportsPage from './BDOReportsPage'
 import SoftwareProjectsPage from './SoftwareProjectsPage'
 import ClientManagementPage from './ClientManagementPage'
@@ -41,16 +41,28 @@ function SuperAdminDashboard({ user, onLogout }) {
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
-    const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+    const unsubscribeTasks = subscribeToTasks(user.uid, user.role, (tasksData) => {
       setTasks(tasksData)
+    })
+
+    // Subscribe to real-time BDO clients updates
+    const unsubscribeBDO = subscribeToBDOClients((clientsData) => {
+      setBdoClients(clientsData)
+    })
+
+    // Subscribe to real-time software projects updates
+    const unsubscribeProjects = subscribeToSoftwareProjects((projectsData) => {
+      setSoftwareProjects(projectsData)
     })
 
     // Load users and employees from Firebase
     loadUsersAndEmployees()
-    loadBdoClients()
-    loadSoftwareProjects()
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribeTasks()
+      unsubscribeBDO()
+      unsubscribeProjects()
+    }
   }, [user.uid, user.role])
 
   const loadUsersAndEmployees = async () => {
@@ -99,88 +111,73 @@ function SuperAdminDashboard({ user, onLogout }) {
     }
   }
 
-  const loadBdoClients = () => {
-    const savedClients = localStorage.getItem('bdoClients')
-    if (savedClients) {
-      setBdoClients(JSON.parse(savedClients))
+  const handleSendNote = async (clientId) => {
+    if (!noteText.trim()) return
+
+    const client = bdoClients.find(c => c.id === clientId)
+    if (!client) return
+
+    const notes = client.notes || []
+    const newNote = {
+      id: Date.now(),
+      text: noteText,
+      sentBy: user.name,
+      sentAt: new Date().toISOString(),
+      seen: false
+    }
+
+    try {
+      await updateBDOClient(clientId, {
+        notes: [...notes, newNote]
+      })
+      setNoteText('')
+      setShowNoteForm({ ...showNoteForm, [clientId]: false })
+    } catch (error) {
+      console.error('Error sending note:', error)
+      alert('Failed to send note')
     }
   }
 
-  const loadSoftwareProjects = () => {
-    const savedProjects = localStorage.getItem('softwareProjects')
-    if (savedProjects) {
-      setSoftwareProjects(JSON.parse(savedProjects))
+  const handleSendProjectNote = async (projectId) => {
+    if (!noteText.trim()) return
+
+    const project = softwareProjects.find(p => p.id === projectId)
+    if (!project) return
+
+    const notes = project.notes || []
+    const newNote = {
+      id: Date.now(),
+      text: noteText,
+      sentBy: user.name,
+      sentAt: new Date().toISOString(),
+      seen: false
+    }
+
+    try {
+      await updateSoftwareProject(projectId, {
+        notes: [...notes, newNote]
+      })
+      setNoteText('')
+      setShowNoteForm({ ...showNoteForm, [`project_${projectId}`]: false })
+    } catch (error) {
+      console.error('Error sending project note:', error)
+      alert('Failed to send note')
     }
   }
 
-  const handleSendNote = (clientId) => {
-    if (!noteText.trim()) return
+  const handleMarkNoteSeen = async (clientId, noteId) => {
+    const client = bdoClients.find(c => c.id === clientId)
+    if (!client) return
 
-    const savedClients = localStorage.getItem('bdoClients')
-    const allClients = savedClients ? JSON.parse(savedClients) : []
-    const updatedClients = allClients.map(c => {
-      if (c.id === clientId) {
-        const notes = c.notes || []
-        return {
-          ...c,
-          notes: [...notes, {
-            id: Date.now(),
-            text: noteText,
-            sentBy: user.name,
-            sentAt: new Date().toISOString(),
-            seen: false
-          }]
-        }
-      }
-      return c
-    })
-    localStorage.setItem('bdoClients', JSON.stringify(updatedClients))
-    loadBdoClients()
-    setNoteText('')
-    setShowNoteForm({ ...showNoteForm, [clientId]: false })
-  }
+    const updatedNotes = client.notes.map(n => 
+      n.id === noteId ? { ...n, seen: true } : n
+    )
 
-  const handleSendProjectNote = (projectId) => {
-    if (!noteText.trim()) return
-
-    const savedProjects = localStorage.getItem('softwareProjects')
-    const allProjects = savedProjects ? JSON.parse(savedProjects) : []
-    const updatedProjects = allProjects.map(p => {
-      if (p.id === projectId) {
-        const notes = p.notes || []
-        return {
-          ...p,
-          notes: [...notes, {
-            id: Date.now(),
-            text: noteText,
-            sentBy: user.name,
-            sentAt: new Date().toISOString(),
-            seen: false
-          }]
-        }
-      }
-      return p
-    })
-    localStorage.setItem('softwareProjects', JSON.stringify(updatedProjects))
-    loadSoftwareProjects()
-    setNoteText('')
-    setShowNoteForm({ ...showNoteForm, [`project_${projectId}`]: false })
-  }
-
-  const handleMarkNoteSeen = (clientId, noteId) => {
-    const savedClients = localStorage.getItem('bdoClients')
-    const allClients = savedClients ? JSON.parse(savedClients) : []
-    const updatedClients = allClients.map(c => {
-      if (c.id === clientId) {
-        return {
-          ...c,
-          notes: c.notes.map(n => n.id === noteId ? { ...n, seen: true } : n)
-        }
-      }
-      return c
-    })
-    localStorage.setItem('bdoClients', JSON.stringify(updatedClients))
-    loadBdoClients()
+    try {
+      await updateBDOClient(clientId, { notes: updatedNotes })
+    } catch (error) {
+      console.error('Error marking note as seen:', error)
+    }
   }
 
   const handleCreateTask = async (e) => {
@@ -336,7 +333,6 @@ function SuperAdminDashboard({ user, onLogout }) {
       <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
         <div className="mobile-menu-header">
           <h3>Menu</h3>
-          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
         </div>
         <div className="mobile-menu-items">
           <button className="mobile-menu-item" onClick={() => { setCurrentView('client-management'); setMobileMenuOpen(false); }}>Client Management</button>
@@ -345,7 +341,7 @@ function SuperAdminDashboard({ user, onLogout }) {
           <button className="mobile-menu-item" onClick={() => { setCurrentView('bdo-reports'); setMobileMenuOpen(false); }}>BDO Reports</button>
           <button className="mobile-menu-item" onClick={() => { setCurrentView('software-projects'); setMobileMenuOpen(false); }}>Software Projects</button>
           <button className="mobile-menu-item" onClick={() => { setCurrentView('finance'); setMobileMenuOpen(false); }}>Finance Management</button>
-          <button className="mobile-menu-item" onClick={onLogout}>Logout</button>
+          <button className="mobile-menu-item" onClick={() => { setMobileMenuOpen(false); onLogout(); }}>Logout</button>
         </div>
       </div>
 
@@ -360,10 +356,10 @@ function SuperAdminDashboard({ user, onLogout }) {
         <div className="header-actions">
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
-        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+        <button className={`mobile-menu-btn ${mobileMenuOpen ? 'active' : ''}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
       </div>
 

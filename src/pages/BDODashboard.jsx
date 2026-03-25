@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createBDOClient, updateBDOClient, subscribeToBDOClients } from '../firebase/firestore'
 
 function BDODashboard({ user, onLogout }) {
   const [clients, setClients] = useState([])
@@ -25,9 +26,12 @@ function BDODashboard({ user, onLogout }) {
   ]
 
   useEffect(() => {
-    loadClients()
-    const interval = setInterval(loadClients, 3000)
-    return () => clearInterval(interval)
+    // Subscribe to real-time BDO clients updates
+    const unsubscribe = subscribeToBDOClients((clientsData) => {
+      setClients(clientsData)
+    })
+
+    return () => unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -39,7 +43,7 @@ function BDODashboard({ user, onLogout }) {
           
           if (noteId && clientId && !visibleNotes.has(`${clientId}-${noteId}`)) {
             setVisibleNotes(prev => new Set([...prev, `${clientId}-${noteId}`]))
-            handleMarkNoteSeen(parseInt(clientId), parseInt(noteId))
+            handleMarkNoteSeen(clientId, parseInt(noteId))
           }
         }
       })
@@ -53,20 +57,12 @@ function BDODashboard({ user, onLogout }) {
     }
   }, [clients, visibleNotes])
 
-  const loadClients = () => {
-    const savedClients = localStorage.getItem('bdoClients')
-    if (savedClients) {
-      setClients(JSON.parse(savedClients))
-    }
-  }
-
-  const handleCreateClient = (e) => {
+  const handleCreateClient = async (e) => {
     e.preventDefault()
     
     const finalStatus = status === 'Custom' ? customStatus : status
     
     const newClient = {
-      id: Date.now(),
       clientName,
       clientLocation,
       meetingDate,
@@ -75,7 +71,7 @@ function BDODashboard({ user, onLogout }) {
       status: finalStatus,
       bdoName: user.name,
       bdoEmail: user.email,
-      createdAt: new Date().toISOString(),
+      bdoId: user.uid || user.id,
       statusHistory: [
         {
           status: finalStatus,
@@ -83,71 +79,71 @@ function BDODashboard({ user, onLogout }) {
           updatedAt: new Date().toISOString(),
           role: 'bdo'
         }
-      ]
+      ],
+      notes: []
     }
 
-    const savedClients = localStorage.getItem('bdoClients')
-    const allClients = savedClients ? JSON.parse(savedClients) : []
-    allClients.push(newClient)
-    localStorage.setItem('bdoClients', JSON.stringify(allClients))
-
-    setClients([...clients, newClient])
-    
-    // Reset form
-    setClientName('')
-    setClientLocation('')
-    setMeetingDate('')
-    setMeetingTime('')
-    setCompanyDetails('')
-    setStatus('Meeting scheduled')
-    setCustomStatus('')
-    setShowCreateForm(false)
+    try {
+      await createBDOClient(newClient)
+      
+      // Reset form
+      setClientName('')
+      setClientLocation('')
+      setMeetingDate('')
+      setMeetingTime('')
+      setCompanyDetails('')
+      setStatus('Meeting scheduled')
+      setCustomStatus('')
+      setShowCreateForm(false)
+    } catch (error) {
+      console.error('Error creating client:', error)
+      alert('Failed to create client')
+    }
   }
 
-  const handleUpdateStatus = (clientId, newStatus, customStatusValue = '') => {
+  const handleUpdateStatus = async (clientId, newStatus, customStatusValue = '') => {
     if (!newStatus) return
 
     const finalStatus = newStatus === 'Custom' ? customStatusValue : newStatus
     if (newStatus === 'Custom' && !customStatusValue) return
 
-    const savedClients = localStorage.getItem('bdoClients')
-    const allClients = savedClients ? JSON.parse(savedClients) : []
-    const updatedClients = allClients.map(c => {
-      if (c.id === clientId) {
-        const history = c.statusHistory || []
-        return {
-          ...c,
+    const client = clients.find(c => c.id === clientId)
+    if (!client) return
+
+    const history = client.statusHistory || []
+    
+    try {
+      await updateBDOClient(clientId, {
+        status: finalStatus,
+        statusHistory: [...history, {
           status: finalStatus,
-          statusHistory: [...history, {
-            status: finalStatus,
-            updatedBy: user.name,
-            updatedAt: new Date().toISOString(),
-            role: 'bdo'
-          }]
-        }
-      }
-      return c
-    })
-    localStorage.setItem('bdoClients', JSON.stringify(updatedClients))
-    loadClients()
-    setStatusUpdate({ ...statusUpdate, [clientId]: '' })
-    setCustomStatusUpdate({ ...customStatusUpdate, [clientId]: '' })
+          updatedBy: user.name,
+          updatedAt: new Date().toISOString(),
+          role: 'bdo'
+        }]
+      })
+      
+      setStatusUpdate({ ...statusUpdate, [clientId]: '' })
+      setCustomStatusUpdate({ ...customStatusUpdate, [clientId]: '' })
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert('Failed to update status')
+    }
   }
 
-  const handleMarkNoteSeen = (clientId, noteId) => {
-    const savedClients = localStorage.getItem('bdoClients')
-    const allClients = savedClients ? JSON.parse(savedClients) : []
-    const updatedClients = allClients.map(c => {
-      if (c.id === clientId) {
-        return {
-          ...c,
-          notes: c.notes.map(n => n.id === noteId ? { ...n, seen: true } : n)
-        }
-      }
-      return c
-    })
-    localStorage.setItem('bdoClients', JSON.stringify(updatedClients))
-    loadClients()
+  const handleMarkNoteSeen = async (clientId, noteId) => {
+    const client = clients.find(c => c.id === clientId)
+    if (!client) return
+
+    const updatedNotes = client.notes.map(n => 
+      n.id === noteId ? { ...n, seen: true } : n
+    )
+
+    try {
+      await updateBDOClient(clientId, { notes: updatedNotes })
+    } catch (error) {
+      console.error('Error marking note as seen:', error)
+    }
   }
 
   const completedClients = clients.filter(c => c.status === 'Converted')
@@ -193,10 +189,9 @@ function BDODashboard({ user, onLogout }) {
       <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
         <div className="mobile-menu-header">
           <h3>Menu</h3>
-          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
         </div>
         <div className="mobile-menu-items">
-          <button className="mobile-menu-item" onClick={onLogout}>Logout</button>
+          <button className="mobile-menu-item" onClick={() => { setMobileMenuOpen(false); onLogout(); }}>Logout</button>
         </div>
       </div>
 
@@ -211,10 +206,10 @@ function BDODashboard({ user, onLogout }) {
         <div className="header-actions">
           <button onClick={onLogout} className="btn-red">Logout</button>
         </div>
-        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+        <button className={`mobile-menu-btn ${mobileMenuOpen ? 'active' : ''}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
       </div>
 

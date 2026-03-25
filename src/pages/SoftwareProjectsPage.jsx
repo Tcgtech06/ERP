@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { subscribeToSoftwareProjects, updateSoftwareProject } from '../firebase/firestore'
 
 function SoftwareProjectsPage({ user, onBack }) {
   const [softwareProjects, setSoftwareProjects] = useState([])
@@ -7,42 +8,38 @@ function SoftwareProjectsPage({ user, onBack }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    loadSoftwareProjects()
-    const interval = setInterval(loadSoftwareProjects, 3000)
-    return () => clearInterval(interval)
+    // Subscribe to real-time software projects updates
+    const unsubscribe = subscribeToSoftwareProjects((projectsData) => {
+      setSoftwareProjects(projectsData)
+    })
+
+    return () => unsubscribe()
   }, [])
 
-  const loadSoftwareProjects = () => {
-    const savedProjects = localStorage.getItem('softwareProjects')
-    if (savedProjects) {
-      setSoftwareProjects(JSON.parse(savedProjects))
-    }
-  }
-
-  const handleSendProjectNote = (projectId) => {
+  const handleSendProjectNote = async (projectId) => {
     if (!noteText.trim()) return
 
-    const savedProjects = localStorage.getItem('softwareProjects')
-    const allProjects = savedProjects ? JSON.parse(savedProjects) : []
-    const updatedProjects = allProjects.map(p => {
-      if (p.id === projectId) {
-        const notes = p.notes || []
-        return {
-          ...p,
-          notes: [...notes, {
-            id: Date.now(),
-            text: noteText,
-            sentBy: user.name,
-            sentAt: new Date().toISOString(),
-            seen: false
-          }]
-        }
-      }
-      return p
-    })
-    localStorage.setItem('softwareProjects', JSON.stringify(updatedProjects))
-    loadSoftwareProjects()
-    setNoteText('')
+    const project = softwareProjects.find(p => p.id === projectId)
+    if (!project) return
+
+    const notes = project.notes || []
+    const newNote = {
+      id: Date.now(),
+      text: noteText,
+      sentBy: user.name,
+      sentAt: new Date().toISOString(),
+      seen: false
+    }
+
+    try {
+      await updateSoftwareProject(projectId, {
+        notes: [...notes, newNote]
+      })
+      setNoteText('')
+    } catch (error) {
+      console.error('Error sending project note:', error)
+      alert('Failed to send note')
+    }
   }
 
   const availableProjects = softwareProjects.filter(p => p.status === 'Available')
@@ -79,10 +76,9 @@ function SoftwareProjectsPage({ user, onBack }) {
       <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
         <div className="mobile-menu-header">
           <h3>Menu</h3>
-          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
         </div>
         <div className="mobile-menu-items">
-          <button className="mobile-menu-item" onClick={onBack}>Back to Dashboard</button>
+          <button className="mobile-menu-item" onClick={() => { setMobileMenuOpen(false); onBack(); }}>Back to Dashboard</button>
         </div>
       </div>
 
@@ -97,10 +93,10 @@ function SoftwareProjectsPage({ user, onBack }) {
         <div className="header-actions">
           <button onClick={onBack} className="btn-yellow">Back to Dashboard</button>
         </div>
-        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+        <button className={`mobile-menu-btn ${mobileMenuOpen ? 'active' : ''}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
       </div>
 

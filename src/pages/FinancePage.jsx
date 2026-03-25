@@ -777,14 +777,13 @@ function FinancePage({ user, onBack }) {
       <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
         <div className="mobile-menu-header">
           <h3>Menu</h3>
-          <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>×</button>
         </div>
         <div className="mobile-menu-items">
           <button className="mobile-menu-item" onClick={() => { setActiveTab('main'); setMobileMenuOpen(false); }}>Main Account</button>
           <button className="mobile-menu-item" onClick={() => { setActiveTab('software'); setMobileMenuOpen(false); }}>Software Projects</button>
           <button className="mobile-menu-item" onClick={() => { setActiveTab('digitalMarketing'); setMobileMenuOpen(false); }}>Digital Marketing</button>
           <button className="mobile-menu-item" onClick={() => { setActiveTab('analytics'); setMobileMenuOpen(false); }}>Analytics</button>
-          <button className="mobile-menu-item" onClick={onBack}>Back to Dashboard</button>
+          <button className="mobile-menu-item" onClick={() => { setMobileMenuOpen(false); onBack(); }}>Back to Dashboard</button>
         </div>
       </div>
 
@@ -799,10 +798,10 @@ function FinancePage({ user, onBack }) {
         <div className="header-actions">
           <button onClick={onBack} className="btn-red">Back to Dashboard</button>
         </div>
-        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+        <button className={`mobile-menu-btn ${mobileMenuOpen ? 'active' : ''}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
       </div>
 
