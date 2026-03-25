@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { subscribeToTasks, updateTask } from '../firebase/firestore'
+import { getFileIcon, formatFileSize } from '../firebase/storage'
 
 function EmployeeDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
@@ -122,6 +123,37 @@ function EmployeeDashboard({ user, onLogout }) {
                   <h3>{task.title}</h3>
                   <p>{task.description}</p>
                   <p style={{ fontWeight: '500', marginTop: '8px' }}>From: {task.clientName}</p>
+
+                  {task.attachments && task.attachments.length > 0 && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                      <p style={{ fontWeight: '500', marginBottom: '8px' }}>📎 Attachments ({task.attachments.length}):</p>
+                      {task.attachments.map((file, idx) => (
+                        <div key={idx} style={{ marginBottom: '6px' }}>
+                          <a 
+                            href={file.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            download
+                            style={{ 
+                              color: 'var(--primary-green)', 
+                              textDecoration: 'none',
+                              fontSize: '14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 8px',
+                              background: 'var(--bg-primary)',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)'
+                            }}
+                          >
+                            {getFileIcon(file.name)} {file.name} ({formatFileSize(file.size)}) 
+                            <span style={{ marginLeft: 'auto', fontSize: '12px' }}>⬇️ Download</span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {task.status !== 'completed' && (
                     <div className="status-update-section">

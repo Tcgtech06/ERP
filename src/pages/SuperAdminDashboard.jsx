@@ -41,6 +41,8 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [attachments, setAttachments] = useState([])
   const [uploading, setUploading] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedEmployees, setSelectedEmployees] = useState([])
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -211,11 +213,41 @@ function SuperAdminDashboard({ user, onLogout }) {
     setAttachments(attachments.filter((_, i) => i !== index))
   }
 
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category)
+    setSelectedEmployees([])
+    setSelectedEmployee('')
+  }
+
+  const handleEmployeeToggle = (employeeName) => {
+    if (selectedEmployees.includes(employeeName)) {
+      setSelectedEmployees(selectedEmployees.filter(e => e !== employeeName))
+    } else {
+      setSelectedEmployees([...selectedEmployees, employeeName])
+    }
+  }
+
+  const handleSelectAllEmployees = () => {
+    if (!selectedCategory) return
+    const categoryEmployees = employees.filter(emp => emp.specialization === selectedCategory)
+    const allNames = categoryEmployees.map(emp => emp.name)
+    setSelectedEmployees(allNames)
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedEmployees([])
+  }
+
+  const getFilteredEmployees = () => {
+    if (!selectedCategory) return []
+    return employees.filter(emp => emp.specialization === selectedCategory)
+  }
+
   const handleCreateTask = async (e) => {
     e.preventDefault()
     
-    if (!selectedEmployee) {
-      alert('Please select an assignee')
+    if (selectedEmployees.length === 0 && !selectedEmployee) {
+      alert('Please select at least one employee or admin')
       return
     }
 
@@ -230,40 +262,49 @@ function SuperAdminDashboard({ user, onLogout }) {
       }
 
       const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
-      const employee = employees.find(emp => emp.name === selectedEmployee)
       
-      const newTask = {
-        title,
-        description,
-        priority,
-        status: 'accepted',
-        clientId: client?.uid || client?.id || null,
-        clientEmail: client?.email || null,
-        clientName: client?.name || 'No specific client',
-        assignedTo: employee ? (employee.uid || employee.id) : selectedEmployee,
-        assignedToName: selectedEmployee,
-        assignedBy: user.name,
-        createdBy: user.name,
-        attachments: uploadedFiles,
-        statusHistory: [
-          {
-            status: 'accepted',
-            updatedBy: user.name,
-            updatedAt: new Date().toISOString(),
-            role: 'superadmin'
-          }
-        ]
+      // Create tasks for each selected employee
+      const assignees = selectedEmployees.length > 0 ? selectedEmployees : [selectedEmployee]
+      
+      for (const assigneeName of assignees) {
+        const employee = employees.find(emp => emp.name === assigneeName)
+        
+        const newTask = {
+          title,
+          description,
+          priority,
+          status: 'accepted',
+          clientId: client?.uid || client?.id || null,
+          clientEmail: client?.email || null,
+          clientName: client?.name || 'No specific client',
+          assignedTo: employee ? (employee.uid || employee.id) : assigneeName,
+          assignedToName: assigneeName,
+          assignedBy: user.name,
+          createdBy: user.name,
+          attachments: uploadedFiles,
+          statusHistory: [
+            {
+              status: 'accepted',
+              updatedBy: user.name,
+              updatedAt: new Date().toISOString(),
+              role: 'superadmin'
+            }
+          ]
+        }
+
+        await createTask(newTask)
       }
 
-      await createTask(newTask)
       setTitle('')
       setDescription('')
       setPriority('medium')
       setSelectedClient('')
       setSelectedEmployee('')
+      setSelectedCategory('')
+      setSelectedEmployees([])
       setAttachments([])
       setShowCreateForm(false)
-      alert('Task created successfully!')
+      alert(`Task(s) created successfully for ${assignees.length} assignee(s)!`)
     } catch (error) {
       console.error('Error creating task:', error)
       alert('Failed to create task: ' + error.message)
@@ -896,25 +937,86 @@ function SuperAdminDashboard({ user, onLogout }) {
                 </select>
               </div>
               <div className="form-group">
-                <label>Assign to</label>
+                <label>Select Employee Category</label>
                 <select 
-                  value={selectedEmployee} 
-                  onChange={(e) => setSelectedEmployee(e.target.value)}
-                  required
+                  value={selectedCategory} 
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                 >
-                  <option value="">Select Assignee</option>
-                  <optgroup label="Employees">
-                    {employees.map(emp => (
-                      <option key={emp.id || emp.uid} value={emp.name}>
-                        {emp.name} ({emp.specialization || emp.employeeId || 'Employee'})
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Administrators">
-                    <option value="Admin">Admin</option>
-                  </optgroup>
+                  <option value="">Choose Category</option>
+                  <option value="Software">Software Development</option>
+                  <option value="Digital Marketing">Digital Marketing</option>
+                  <option value="BDO">Business Development Officer</option>
+                  <option value="Admin">Admin</option>
                 </select>
               </div>
+              {selectedCategory && selectedCategory !== 'Admin' && (
+                <div className="form-group">
+                  <label>Select Employees ({selectedEmployees.length} selected)</label>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <button 
+                      type="button"
+                      onClick={handleSelectAllEmployees}
+                      className="btn-green"
+                      style={{ padding: '6px 12px', fontSize: '14px' }}
+                    >
+                      Select All
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleDeselectAll}
+                      className="btn-red"
+                      style={{ padding: '6px 12px', fontSize: '14px' }}
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                  <div style={{ 
+                    maxHeight: '200px', 
+                    overflowY: 'auto', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '6px',
+                    padding: '8px'
+                  }}>
+                    {getFilteredEmployees().map(emp => (
+                      <div 
+                        key={emp.id || emp.uid}
+                        style={{
+                          padding: '8px 12px',
+                          marginBottom: '6px',
+                          background: selectedEmployees.includes(emp.name) ? 'var(--light-green)' : 'var(--bg-secondary)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                        onClick={() => handleEmployeeToggle(emp.name)}
+                      >
+                        <input 
+                          type="checkbox"
+                          checked={selectedEmployees.includes(emp.name)}
+                          onChange={() => {}}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span>{emp.name} ({emp.employeeId || emp.email})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedCategory === 'Admin' && (
+                <div className="form-group">
+                  <label>Assign to Admin</label>
+                  <select 
+                    value={selectedEmployee} 
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Admin</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label>Related Client (Optional)</label>
                 <select 
