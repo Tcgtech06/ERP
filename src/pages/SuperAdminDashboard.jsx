@@ -36,7 +36,7 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [showNoteForm, setShowNoteForm] = useState({})
   const [currentView, setCurrentView] = useState('dashboard')
   const [clients, setClients] = useState([])
-  const [employees, setEmployees] = useState([])
+  const [employees, setEmployees] = useState(mockEmployees)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -55,23 +55,35 @@ function SuperAdminDashboard({ user, onLogout }) {
 
   const loadUsersAndEmployees = async () => {
     try {
+      console.log('📥 SuperAdmin: Loading users and employees...');
       const [usersData, employeesData] = await Promise.all([
         getUsers(),
         getEmployees()
       ])
       
+      console.log('Users data:', usersData);
+      console.log('Employees data:', employeesData);
+      
       if (usersData.length > 0) {
         const clientUsers = usersData.filter(u => u.role === 'client')
         if (clientUsers.length > 0) {
           setClients(clientUsers)
+          console.log('✅ Clients set:', clientUsers.length);
         }
       }
       
       if (employeesData.length > 0) {
         setEmployees(employeesData)
+        console.log('✅ Employees set:', employeesData.length);
+        console.log('Employee details:', employeesData);
+      } else {
+        console.warn('⚠️ No employees found in Firebase! Using mock data...');
+        setEmployees(mockEmployees)
       }
     } catch (error) {
-      console.error('Error loading users:', error)
+      console.error('❌ Error loading users:', error)
+      console.log('Using mock employees as fallback');
+      setEmployees(mockEmployees)
     }
   }
 

@@ -64,7 +64,7 @@ body {
 }
 
 .mobile-menu-btn span {
-  display: block;
+  display: block !important;
   height: 3px;
   border-radius: 2px;
   transition: all 0.3s ease;
@@ -999,6 +999,17 @@ textarea {
     font-size: 18px;
   }
 
+  .header {
+    background: white !important;
+    color: var(--text-primary) !important;
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .header h1,
+  .header p {
+    color: var(--text-primary) !important;
+  }
+
   .header p {
     font-size: 12px;
   }
@@ -1013,7 +1024,7 @@ textarea {
   }
 
   .mobile-menu-btn {
-    display: flex;
+    display: flex !important;
   }
 
   .card {
@@ -1079,6 +1090,14 @@ textarea {
   .header {
     flex-direction: row;
     padding: 12px;
+    background: white !important;
+    color: var(--text-primary) !important;
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .header h1,
+  .header p {
+    color: var(--text-primary) !important;
   }
 
   .header-content {
@@ -1104,7 +1123,7 @@ textarea {
   }
 
   .mobile-menu-btn {
-    display: flex;
+    display: flex !important;
   }
 
   input, select, textarea {

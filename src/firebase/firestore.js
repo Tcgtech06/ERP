@@ -179,15 +179,23 @@ export const getUsers = async () => {
 
 export const getEmployees = async () => {
   try {
+    console.log('🔍 Fetching employees from Firebase...');
     const q = query(collection(db, 'users'), where('role', '==', 'employee'));
     const querySnapshot = await getDocs(q);
     const employees = [];
     querySnapshot.forEach((doc) => {
-      employees.push({ id: doc.id, ...doc.data() });
+      const employeeData = {
+        uid: doc.id,
+        id: doc.id,
+        ...doc.data()
+      };
+      console.log('Found employee:', employeeData);
+      employees.push(employeeData);
     });
+    console.log(`✅ Total employees fetched: ${employees.length}`);
     return employees;
   } catch (error) {
-    console.error('Error getting employees:', error);
+    console.error('❌ Error getting employees:', error);
     throw error;
   }
 };

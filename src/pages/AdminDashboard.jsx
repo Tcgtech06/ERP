@@ -10,7 +10,7 @@ const mockEmployees = [
 function AdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
-  const [employees, setEmployees] = useState([])
+  const [employees, setEmployees] = useState(mockEmployees)
   const [selectedEmployee, setSelectedEmployee] = useState({})
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})
@@ -30,12 +30,19 @@ function AdminDashboard({ user, onLogout }) {
 
   const loadEmployees = async () => {
     try {
+      console.log('📥 Admin: Loading employees...');
       const employeesData = await getEmployees()
+      console.log('Employees data:', employeesData);
       if (employeesData.length > 0) {
         setEmployees(employeesData)
+        console.log('✅ Employees set:', employeesData.length);
+      } else {
+        console.warn('⚠️ No employees found! Using mock data...');
+        setEmployees(mockEmployees)
       }
     } catch (error) {
-      console.error('Error loading employees:', error)
+      console.error('❌ Error loading employees:', error)
+      setEmployees(mockEmployees)
     }
   }
 
