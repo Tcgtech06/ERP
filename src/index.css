@@ -56,7 +56,7 @@ body {
   cursor: pointer;
   z-index: 1001;
   width: 35px;
-  height: 30px;
+  height: 24px;
   position: relative;
   flex-direction: column;
   justify-content: space-between;
@@ -74,14 +74,17 @@ body {
 
 .mobile-menu-btn span:nth-child(1) {
   background: var(--primary-red) !important;
+  width: 80%;
 }
 
 .mobile-menu-btn span:nth-child(2) {
   background: var(--primary-green) !important;
+  width: 100%;
 }
 
 .mobile-menu-btn span:nth-child(3) {
   background: var(--primary-yellow) !important;
+  width: 80%;
 }
 
 .mobile-menu-overlay {
