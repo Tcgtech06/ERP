@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { subscribeToTasks, createTask, updateTask, deleteTask, getUsers, getEmployees, subscribeToBDOClients, updateBDOClient, subscribeToSoftwareProjects, updateSoftwareProject } from '../firebase/firestore'
+import { uploadMultipleFiles, getFileIcon, formatFileSize, validateFileType, validateFileSize } from '../firebase/storage'
 import BDOReportsPage from './BDOReportsPage'
 import SoftwareProjectsPage from './SoftwareProjectsPage'
 import ClientManagementPage from './ClientManagementPage'
@@ -38,6 +39,8 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [clients, setClients] = useState([])
   const [employees, setEmployees] = useState(mockEmployees)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [attachments, setAttachments] = useState([])
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -180,6 +183,34 @@ function SuperAdminDashboard({ user, onLogout }) {
     }
   }
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files)
+    const validFiles = []
+    const errors = []
+
+    files.forEach(file => {
+      if (!validateFileType(file)) {
+        errors.push(`${file.name}: Invalid file type`)
+        return
+      }
+      if (!validateFileSize(file, 10)) {
+        errors.push(`${file.name}: File too large (max 10MB)`)
+        return
+      }
+      validFiles.push(file)
+    })
+
+    if (errors.length > 0) {
+      alert('Some files were rejected:\n' + errors.join('\n'))
+    }
+
+    setAttachments([...attachments, ...validFiles])
+  }
+
+  const handleRemoveAttachment = (index) => {
+    setAttachments(attachments.filter((_, i) => i !== index))
+  }
+
   const handleCreateTask = async (e) => {
     e.preventDefault()
     
@@ -187,43 +218,57 @@ function SuperAdminDashboard({ user, onLogout }) {
       alert('Please select an assignee')
       return
     }
-    
-    const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
-    const employee = employees.find(emp => emp.name === selectedEmployee)
-    
-    const newTask = {
-      title,
-      description,
-      priority,
-      status: 'accepted',
-      clientId: client?.uid || client?.id || null,
-      clientEmail: client?.email || null,
-      clientName: client?.name || 'No specific client',
-      assignedTo: employee ? (employee.uid || employee.id) : selectedEmployee, // Can be Admin or Super Admin
-      assignedToName: selectedEmployee,
-      assignedBy: user.name,
-      createdBy: user.name,
-      statusHistory: [
-        {
-          status: 'accepted',
-          updatedBy: user.name,
-          updatedAt: new Date().toISOString(),
-          role: 'superadmin'
-        }
-      ]
-    }
 
+    setUploading(true)
+    
     try {
+      // Upload attachments if any
+      let uploadedFiles = []
+      if (attachments.length > 0) {
+        const timestamp = Date.now()
+        uploadedFiles = await uploadMultipleFiles(attachments, `tasks/${timestamp}`)
+      }
+
+      const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
+      const employee = employees.find(emp => emp.name === selectedEmployee)
+      
+      const newTask = {
+        title,
+        description,
+        priority,
+        status: 'accepted',
+        clientId: client?.uid || client?.id || null,
+        clientEmail: client?.email || null,
+        clientName: client?.name || 'No specific client',
+        assignedTo: employee ? (employee.uid || employee.id) : selectedEmployee,
+        assignedToName: selectedEmployee,
+        assignedBy: user.name,
+        createdBy: user.name,
+        attachments: uploadedFiles,
+        statusHistory: [
+          {
+            status: 'accepted',
+            updatedBy: user.name,
+            updatedAt: new Date().toISOString(),
+            role: 'superadmin'
+          }
+        ]
+      }
+
       await createTask(newTask)
       setTitle('')
       setDescription('')
       setPriority('medium')
       setSelectedClient('')
       setSelectedEmployee('')
+      setAttachments([])
       setShowCreateForm(false)
+      alert('Task created successfully!')
     } catch (error) {
       console.error('Error creating task:', error)
-      alert('Failed to create task')
+      alert('Failed to create task: ' + error.message)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -882,7 +927,57 @@ function SuperAdminDashboard({ user, onLogout }) {
                   ))}
                 </select>
               </div>
-              <button type="submit" className="btn-green">Create Task</button>
+              <div className="form-group">
+                <label>Attachments (Optional)</label>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt,.csv,.jpg,.jpeg,.png,.gif"
+                  style={{ padding: '8px', border: '1px solid var(--border-color)', borderRadius: '6px' }}
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Supported: PDF, Word, Excel, PowerPoint, ZIP, Images (Max 10MB per file)
+                </p>
+                {attachments.length > 0 && (
+                  <div style={{ marginTop: '12px' }}>
+                    <p style={{ fontWeight: '500', marginBottom: '8px' }}>Selected Files:</p>
+                    {attachments.map((file, index) => (
+                      <div key={index} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        padding: '8px 12px', 
+                        background: 'var(--bg-secondary)', 
+                        borderRadius: '6px',
+                        marginBottom: '6px'
+                      }}>
+                        <span style={{ fontSize: '14px' }}>
+                          {getFileIcon(file.name)} {file.name} ({formatFileSize(file.size)})
+                        </span>
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveAttachment(index)}
+                          style={{ 
+                            background: 'var(--primary-red)', 
+                            color: 'white', 
+                            border: 'none', 
+                            padding: '4px 8px', 
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button type="submit" className="btn-green" disabled={uploading}>
+                {uploading ? 'Creating Task...' : 'Create Task'}
+              </button>
             </form>
           </div>
         )}
@@ -902,6 +997,30 @@ function SuperAdminDashboard({ user, onLogout }) {
                   <h3>{task.title}</h3>
                   <p>{task.description}</p>
                   <p style={{ fontWeight: '500', marginTop: '12px' }}>Client: {task.clientName}</p>
+                  {task.attachments && task.attachments.length > 0 && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                      <p style={{ fontWeight: '500', marginBottom: '8px' }}>📎 Attachments ({task.attachments.length}):</p>
+                      {task.attachments.map((file, idx) => (
+                        <div key={idx} style={{ marginBottom: '6px' }}>
+                          <a 
+                            href={file.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ 
+                              color: 'var(--primary-green)', 
+                              textDecoration: 'none',
+                              fontSize: '14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            {getFileIcon(file.name)} {file.name} ({formatFileSize(file.size)})
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {task.assignedTo && (
                     <p style={{ marginTop: '12px', fontWeight: '500' }}>
                       Assigned to: {task.assignedTo}

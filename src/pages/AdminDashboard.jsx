@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { subscribeToTasks, updateTask, getEmployees, createTask, getUsers } from '../firebase/firestore'
+import { uploadMultipleFiles, getFileIcon, formatFileSize, validateFileType, validateFileSize } from '../firebase/storage'
 
 const mockEmployees = [
   { id: 1, name: 'Software Employee', email: 'TT001', employeeId: 'TT001', specialization: 'Software' },
@@ -22,6 +23,8 @@ function AdminDashboard({ user, onLogout }) {
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedEmployeeForTask, setSelectedEmployeeForTask] = useState('')
   const [clients, setClients] = useState([])
+  const [attachments, setAttachments] = useState([])
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
@@ -77,6 +80,34 @@ function AdminDashboard({ user, onLogout }) {
     }
   }
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files)
+    const validFiles = []
+    const errors = []
+
+    files.forEach(file => {
+      if (!validateFileType(file)) {
+        errors.push(`${file.name}: Invalid file type`)
+        return
+      }
+      if (!validateFileSize(file, 10)) {
+        errors.push(`${file.name}: File too large (max 10MB)`)
+        return
+      }
+      validFiles.push(file)
+    })
+
+    if (errors.length > 0) {
+      alert('Some files were rejected:\n' + errors.join('\n'))
+    }
+
+    setAttachments([...attachments, ...validFiles])
+  }
+
+  const handleRemoveAttachment = (index) => {
+    setAttachments(attachments.filter((_, i) => i !== index))
+  }
+
   const handleCreateTask = async (e) => {
     e.preventDefault()
     
@@ -84,44 +115,57 @@ function AdminDashboard({ user, onLogout }) {
       alert('Please select an employee to assign the task')
       return
     }
-    
-    const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
-    const employee = employees.find(emp => emp.name === selectedEmployeeForTask)
-    
-    const newTask = {
-      title,
-      description,
-      priority,
-      status: 'accepted',
-      clientId: client?.uid || client?.id || null,
-      clientEmail: client?.email || null,
-      clientName: client?.name || 'No specific client',
-      assignedTo: employee ? (employee.uid || employee.id) : null,
-      assignedToName: selectedEmployeeForTask,
-      assignedBy: user.name,
-      createdBy: user.name,
-      statusHistory: [
-        {
-          status: 'accepted',
-          updatedBy: user.name,
-          updatedAt: new Date().toISOString(),
-          role: 'admin'
-        }
-      ]
-    }
 
+    setUploading(true)
+    
     try {
+      // Upload attachments if any
+      let uploadedFiles = []
+      if (attachments.length > 0) {
+        const timestamp = Date.now()
+        uploadedFiles = await uploadMultipleFiles(attachments, `tasks/${timestamp}`)
+      }
+
+      const client = selectedClient ? clients.find(c => c.email === selectedClient) : null
+      const employee = employees.find(emp => emp.name === selectedEmployeeForTask)
+      
+      const newTask = {
+        title,
+        description,
+        priority,
+        status: 'accepted',
+        clientId: client?.uid || client?.id || null,
+        clientEmail: client?.email || null,
+        clientName: client?.name || 'No specific client',
+        assignedTo: employee ? (employee.uid || employee.id) : null,
+        assignedToName: selectedEmployeeForTask,
+        assignedBy: user.name,
+        createdBy: user.name,
+        attachments: uploadedFiles,
+        statusHistory: [
+          {
+            status: 'accepted',
+            updatedBy: user.name,
+            updatedAt: new Date().toISOString(),
+            role: 'admin'
+          }
+        ]
+      }
+
       await createTask(newTask)
       setTitle('')
       setDescription('')
       setPriority('medium')
       setSelectedClient('')
       setSelectedEmployeeForTask('')
+      setAttachments([])
       setShowCreateForm(false)
       alert('Task created and assigned successfully!')
     } catch (error) {
       console.error('Error creating task:', error)
-      alert('Failed to create task')
+      alert('Failed to create task: ' + error.message)
+    } finally {
+      setUploading(false)
     }
   }
 
