@@ -50,9 +50,9 @@ body {
 /* Mobile Hamburger Menu */
 .mobile-menu-btn {
   display: none;
-  background: transparent;
+  background: transparent !important;
   border: none;
-  padding: 8px;
+  padding: 0;
   cursor: pointer;
   z-index: 1001;
   width: 30px;
@@ -73,7 +73,7 @@ body {
 
 .mobile-menu-btn span:nth-child(1) {
   top: 4px;
-  width: 18px;
+  width: 15px;
   background: #DC2626 !important; /* Red */
 }
 
@@ -86,7 +86,7 @@ body {
 
 .mobile-menu-btn span:nth-child(3) {
   bottom: 4px;
-  width: 18px;
+  width: 15px;
   background: #EAB308 !important; /* Yellow */
 }
 
