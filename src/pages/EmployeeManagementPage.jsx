@@ -24,7 +24,9 @@ function EmployeeManagementPage({ user, onBack }) {
       // Subscribe to real-time employees updates
       const unsubscribe = subscribeToEmployees((employeesData) => {
         console.log('📋 Employees loaded:', employeesData)
-        setEmployees(employeesData)
+        // Filter out deleted employees
+        const activeEmployees = employeesData.filter(emp => emp.status !== 'Deleted')
+        setEmployees(activeEmployees)
       })
 
       return () => {
@@ -157,12 +159,20 @@ function EmployeeManagementPage({ user, onBack }) {
     if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return
     
     try {
+      // Note: Firebase Auth users cannot be deleted from client-side
+      // We'll mark the employee as deleted in Firestore
+      await updateEmployee(employeeId, { 
+        status: 'Deleted',
+        deletedAt: new Date().toISOString()
+      })
+      
+      // Then delete from Firestore
       await deleteEmployee(employeeId)
       setSelectedEmployee(null)
-      alert('Employee deleted successfully')
+      alert('Employee deleted successfully from system.\n\nNote: The Firebase Auth account still exists. To fully remove, delete from Firebase Console → Authentication.')
     } catch (error) {
       console.error('Error deleting employee:', error)
-      alert('Failed to delete employee')
+      alert('Failed to delete employee: ' + error.message)
     }
   }
 

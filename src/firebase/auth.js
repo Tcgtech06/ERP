@@ -68,6 +68,12 @@ export const loginUser = async (emailOrId, password) => {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         console.log('✅ Found user in Firestore:', userData);
+        
+        // Check if employee is deleted
+        if (userData.status === 'Deleted') {
+          throw new Error('This employee account has been deleted. Please contact administrator.');
+        }
+        
         return {
           uid: user.uid,
           email: user.email,
@@ -79,6 +85,10 @@ export const loginUser = async (emailOrId, password) => {
       }
     } catch (firestoreError) {
       console.log('⚠️ User not in Firestore, checking hardcoded mapping');
+      // If the error is about deleted account, throw it
+      if (firestoreError.message && firestoreError.message.includes('deleted')) {
+        throw firestoreError;
+      }
     }
 
     // Fallback to hardcoded mapping (only for SuperAdmin, Admin, Client)
