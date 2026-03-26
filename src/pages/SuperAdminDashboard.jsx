@@ -9,9 +9,9 @@ import AdminManagementPage from './AdminManagementPage'
 import FinancePage from './FinancePage'
 
 const mockEmployees = [
-  { id: 1, name: 'Software Employee', email: 'TT001', employeeId: 'TT001', specialization: 'Software' },
-  { id: 2, name: 'Digital Marketing Employee', email: 'TD001', employeeId: 'TD001', specialization: 'Digital Marketing' },
-  { id: 3, name: 'BDO Employee', email: 'TB001', employeeId: 'TB001', specialization: 'BDO' }
+  { id: 1, name: 'Software Employee', email: 'TT001@tcg.com', employeeId: 'TT001', specialization: 'Software Development', uid: 'mock-tt001' },
+  { id: 2, name: 'Digital Marketing Employee', email: 'TD001@tcg.com', employeeId: 'TD001', specialization: 'Digital Marketing', uid: 'mock-td001' },
+  { id: 3, name: 'BDO Employee', email: 'TB001@tcg.com', employeeId: 'TB001', specialization: 'BDO', uid: 'mock-tb001' }
 ]
 
 const mockClients = [
