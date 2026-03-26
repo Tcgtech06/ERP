@@ -16,7 +16,7 @@ export const loginUser = async (emailOrId, password) => {
     let email = emailOrId;
     let isEmployeeIdLogin = false;
     
-    // Check if it's an employee ID (TT001, TD001, TB001, etc.)
+    // Check if it's an employee ID (TT001, TD001, TB001, etc.) - NOT an email
     if (!emailOrId.includes('@')) {
       isEmployeeIdLogin = true;
       const employeeId = emailOrId.toUpperCase();
@@ -50,6 +50,9 @@ export const loginUser = async (emailOrId, password) => {
         console.error('❌ Error finding employee:', error);
         throw new Error(`Employee ID ${employeeId} not found in system`);
       }
+    } else {
+      // It's an email login
+      console.log('📧 Email login detected:', email);
     }
 
     console.log('🔐 Attempting login with email:', email);
