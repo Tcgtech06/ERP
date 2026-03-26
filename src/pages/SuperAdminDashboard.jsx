@@ -253,7 +253,7 @@ function SuperAdminDashboard({ user, onLogout }) {
           title,
           description,
           priority,
-          status: 'accepted',
+          status: 'pending',
           clientId: client?.uid || client?.id || null,
           clientEmail: client?.email || null,
           clientName: client?.name || 'No specific client',
@@ -265,7 +265,7 @@ function SuperAdminDashboard({ user, onLogout }) {
           attachments: uploadedFiles,
           statusHistory: [
             {
-              status: 'accepted',
+              status: 'pending',
               updatedBy: user.name,
               updatedAt: new Date().toISOString(),
               role: 'superadmin'

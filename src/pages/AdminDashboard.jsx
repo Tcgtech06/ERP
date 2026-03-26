@@ -104,7 +104,7 @@ function AdminDashboard({ user, onLogout }) {
         title,
         description,
         priority,
-        status: 'accepted',
+        status: 'pending',
         clientId: client?.uid || client?.id || null,
         clientEmail: client?.email || null,
         clientName: client?.name || 'No specific client',
@@ -116,7 +116,7 @@ function AdminDashboard({ user, onLogout }) {
         attachments: uploadedFiles,
         statusHistory: [
           {
-            status: 'accepted',
+            status: 'pending',
             updatedBy: user.name,
             updatedAt: new Date().toISOString(),
             role: 'admin'
@@ -150,14 +150,14 @@ function AdminDashboard({ user, onLogout }) {
     try {
       const employee = employees.find(emp => emp.name === employeeName)
       await updateTask(taskId, {
-        status: 'accepted',
+        status: 'pending',
         assignedTo: employee?.uid || employee?.email,
         assignedToName: employeeName,
         assignedToEmail: employee?.email || employeeName,
         assignedBy: user.name,
         statusHistory: [
           {
-            status: 'accepted',
+            status: 'pending',
             updatedBy: user.name,
             updatedAt: new Date().toISOString(),
             role: 'admin'

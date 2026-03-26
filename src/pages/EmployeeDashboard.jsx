@@ -52,7 +52,7 @@ function EmployeeDashboard({ user, onLogout }) {
   const cancelledTasks = tasks.filter(t => t.status === 'rejected')
 
   const statusCounts = {
-    accepted: tasks.filter(t => t.status === 'accepted').length,
+    pending: tasks.filter(t => t.status === 'pending').length,
     in_progress: tasks.filter(t => t.status === 'in_progress').length,
     completed: completedTasks.length
   }
@@ -104,8 +104,8 @@ function EmployeeDashboard({ user, onLogout }) {
 
       <div className="stats-grid">
         <div className="stat-card yellow">
-          <h3>New Tasks</h3>
-          <div className="stat-value">{statusCounts.accepted}</div>
+          <h3>Pending Tasks</h3>
+          <div className="stat-value">{statusCounts.pending}</div>
         </div>
         <div className="stat-card red">
           <h3>In Progress</h3>
@@ -172,8 +172,9 @@ function EmployeeDashboard({ user, onLogout }) {
                           onChange={(e) => setStatusUpdate({ ...statusUpdate, [task.id]: e.target.value })}
                         >
                           <option value="">Select new status</option>
-                          {task.status === 'accepted' && <option value="in_progress">In Progress</option>}
-                          {task.status === 'in_progress' && <option value="completed">Completed</option>}
+                          {task.status === 'pending' && <option value="accepted">Accept Task</option>}
+                          {task.status === 'accepted' && <option value="in_progress">Start Work (In Progress)</option>}
+                          {task.status === 'in_progress' && <option value="completed">Mark as Completed</option>}
                         </select>
                         <button className="btn-green" onClick={() => handleUpdateStatus(task.id, statusUpdate[task.id])}>
                           Update
