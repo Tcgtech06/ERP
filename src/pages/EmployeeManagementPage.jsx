@@ -300,16 +300,16 @@ function EmployeeManagementPage({ user, onBack }) {
                     marginRight: '12px'
                   }}>
                     <span style={{ color: 'white', fontWeight: 'bold', fontSize: '16px' }}>
-                      {employee.name.charAt(0).toUpperCase()}
+                      {employee.name ? employee.name.charAt(0).toUpperCase() : '?'}
                     </span>
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{employee.name}</h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>{employee.employeeId}</p>
+                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{employee.name || 'Unknown'}</h3>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>{employee.employeeId || 'N/A'}</p>
                   </div>
                 </div>
                 
-                <p style={{ margin: '8px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{employee.email}</p>
+                <p style={{ margin: '8px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{employee.email || 'No email'}</p>
                 
                 <div style={{ marginBottom: '12px' }}>
                   <span className={`status ${
@@ -317,10 +317,10 @@ function EmployeeManagementPage({ user, onBack }) {
                     employee.specialization === 'Digital Marketing' ? 'pending' : 
                     'accepted'
                   }`} style={{ fontSize: '12px' }}>
-                    {employee.specialization}
+                    {employee.specialization || 'Unknown'}
                   </span>
-                  <span className={`status ${employee.status.toLowerCase().replace(' ', '_')}`} style={{ fontSize: '12px', marginLeft: '8px' }}>
-                    {employee.status}
+                  <span className={`status ${employee.status ? employee.status.toLowerCase().replace(' ', '_') : 'inactive'}`} style={{ fontSize: '12px', marginLeft: '8px' }}>
+                    {employee.status || 'Unknown'}
                   </span>
                 </div>
                 
@@ -356,7 +356,7 @@ function EmployeeManagementPage({ user, onBack }) {
           }`
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-            <h2>Employee Details: {selectedEmployee.name}</h2>
+            <h2>Employee Details: {selectedEmployee.name || 'Unknown'}</h2>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button className="btn-red" onClick={() => handleDeleteEmployee(selectedEmployee.id)}>Delete</button>
               <button className="btn-yellow" onClick={() => setSelectedEmployee(null)}>Close</button>
@@ -367,18 +367,18 @@ function EmployeeManagementPage({ user, onBack }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
               <div>
                 <h4>Personal Information</h4>
-                <p><strong>Name:</strong> {selectedEmployee.name}</p>
-                <p><strong>Email:</strong> {selectedEmployee.email}</p>
-                <p><strong>Employee ID:</strong> {selectedEmployee.employeeId}</p>
+                <p><strong>Name:</strong> {selectedEmployee.name || 'N/A'}</p>
+                <p><strong>Email:</strong> {selectedEmployee.email || 'N/A'}</p>
+                <p><strong>Employee ID:</strong> {selectedEmployee.employeeId || 'N/A'}</p>
               </div>
               <div>
                 <h4>Work Details</h4>
-                <p><strong>Specialization:</strong> {selectedEmployee.specialization}</p>
-                <p><strong>Status:</strong> {selectedEmployee.status}</p>
+                <p><strong>Specialization:</strong> {selectedEmployee.specialization || 'N/A'}</p>
+                <p><strong>Status:</strong> {selectedEmployee.status || 'N/A'}</p>
                 <p><strong>Department:</strong> {
                   selectedEmployee.specialization === 'Software Development' ? 'Technology' : 
                   selectedEmployee.specialization === 'Digital Marketing' ? 'Marketing' : 
-                  'Business Development'
+                  selectedEmployee.specialization === 'BDO' ? 'Business Development' : 'N/A'
                 }</p>
               </div>
             </div>
