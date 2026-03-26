@@ -86,9 +86,7 @@ function Login({ onLogin }) {
           <p><strong>Super Admin:</strong> superadmin@tcg.com / tcgtech@01</p>
           <p><strong>Admin:</strong> TCGadmin01 / admin@01</p>
           <p><strong>Client:</strong> client@tcg.com / client@123</p>
-          <p><strong>Employee:</strong> TT001 / TCGT202601 (Software)</p>
-          <p><strong>Employee:</strong> TD001 / TCGD202601 (Digital Marketing)</p>
-          <p><strong>Employee:</strong> TB001 / TCGB202601 (BDO)</p>
+          <p><strong>Employees:</strong> Use your Employee ID (e.g., TD001) and password</p>
         </div>
       </div>
     </div>

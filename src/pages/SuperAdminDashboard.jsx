@@ -8,18 +8,6 @@ import EmployeeManagementPage from './EmployeeManagementPage'
 import AdminManagementPage from './AdminManagementPage'
 import FinancePage from './FinancePage'
 
-const mockEmployees = [
-  { id: 1, name: 'Software Employee', email: 'TT001@tcg.com', employeeId: 'TT001', specialization: 'Software Development', uid: 'mock-tt001' },
-  { id: 2, name: 'Digital Marketing Employee', email: 'TD001@tcg.com', employeeId: 'TD001', specialization: 'Digital Marketing', uid: 'mock-td001' },
-  { id: 3, name: 'BDO Employee', email: 'TB001@tcg.com', employeeId: 'TB001', specialization: 'BDO', uid: 'mock-tb001' }
-]
-
-const mockClients = [
-  { id: 1, name: 'Client User', email: 'client@test.com' },
-  { id: 2, name: 'Alice Client', email: 'alice@test.com' },
-  { id: 3, name: 'Bob Client', email: 'bob.client@test.com' }
-]
-
 function SuperAdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [bdoClients, setBdoClients] = useState([])
@@ -63,14 +51,7 @@ function SuperAdminDashboard({ user, onLogout }) {
     // Subscribe to real-time employees updates
     const unsubscribeEmployees = subscribeToEmployees((employeesData) => {
       console.log('📋 SuperAdmin: Employees updated:', employeesData.length)
-      // If no employees in Firebase, use mock data as fallback
-      if (employeesData.length === 0) {
-        console.log('⚠️ No Firebase employees, using mock data')
-        setEmployees(mockEmployees)
-      } else {
-        console.log('✅ Using Firebase employees:', employeesData)
-        setEmployees(employeesData)
-      }
+      setEmployees(employeesData)
     })
 
     // Load users (clients) from Firebase

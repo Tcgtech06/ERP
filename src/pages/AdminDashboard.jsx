@@ -2,12 +2,6 @@ import { useState, useEffect } from 'react'
 import { subscribeToTasks, updateTask, subscribeToEmployees, createTask, getUsers } from '../firebase/firestore'
 import { uploadMultipleFiles, getFileIcon, formatFileSize, validateFileType, validateFileSize } from '../firebase/storage'
 
-const mockEmployees = [
-  { id: 1, name: 'Software Employee', email: 'TT001@tcg.com', employeeId: 'TT001', specialization: 'Software Development', uid: 'mock-tt001' },
-  { id: 2, name: 'Digital Marketing Employee', email: 'TD001@tcg.com', employeeId: 'TD001', specialization: 'Digital Marketing', uid: 'mock-td001' },
-  { id: 3, name: 'BDO Employee', email: 'TB001@tcg.com', employeeId: 'TB001', specialization: 'BDO', uid: 'mock-tb001' }
-]
-
 function AdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
@@ -35,14 +29,7 @@ function AdminDashboard({ user, onLogout }) {
     // Subscribe to real-time employees updates
     const unsubscribeEmployees = subscribeToEmployees((employeesData) => {
       console.log('📋 Admin: Employees updated:', employeesData.length)
-      // If no employees in Firebase, use mock data as fallback
-      if (employeesData.length === 0) {
-        console.log('⚠️ No Firebase employees, using mock data')
-        setEmployees(mockEmployees)
-      } else {
-        console.log('✅ Using Firebase employees:', employeesData)
-        setEmployees(employeesData)
-      }
+      setEmployees(employeesData)
     })
 
     // Load clients from Firebase

@@ -1,37 +1,56 @@
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from './config';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './config';
 
-// User roles and credentials mapping (for basic user data)
+// User roles and credentials mapping (ONLY for SuperAdmin, Admin, and test Client)
 const userRoles = {
   'superadmin@tcg.com': { role: 'superadmin', name: 'Super Admin' },
   'TCGadmin01@tcg.com': { role: 'admin', name: 'Admin User', employeeId: 'TCGadmin01' },
-  'client@tcg.com': { role: 'client', name: 'Client User' },
-  'TT001@tcg.com': { role: 'employee', name: 'Software Employee', specialization: 'Software Development', employeeId: 'TT001' },
-  'TD001@tcg.com': { role: 'employee', name: 'Digital Marketing Employee', specialization: 'Digital Marketing', employeeId: 'TD001' },
-  'TB001@tcg.com': { role: 'employee', name: 'BDO Employee', specialization: 'BDO', employeeId: 'TB001' }
+  'client@tcg.com': { role: 'client', name: 'Client User' }
 };
 
 // Custom login function that handles both email and employee ID
 export const loginUser = async (emailOrId, password) => {
   try {
-    // For Firebase Auth, we need to use email format
     let email = emailOrId;
+    let isEmployeeIdLogin = false;
+    
+    // Check if it's an employee ID (TT001, TD001, TB001, etc.)
     if (!emailOrId.includes('@')) {
-      // Convert employee ID to email format for Firebase
-      email = `${emailOrId}@tcg.com`;
+      isEmployeeIdLogin = true;
+      const employeeId = emailOrId.toUpperCase();
+      
+      console.log('🔍 Employee ID login detected:', employeeId);
+      
+      // Search for employee by employeeId in Firestore
+      try {
+        const q = query(collection(db, 'users'), where('employeeId', '==', employeeId));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const employeeDoc = querySnapshot.docs[0];
+          const employeeData = employeeDoc.data();
+          email = employeeData.email;
+          console.log('✅ Found employee in Firestore:', employeeData.name, 'Email:', email);
+        } else {
+          throw new Error(`Employee ID ${employeeId} not found`);
+        }
+      } catch (error) {
+        console.error('❌ Error finding employee:', error);
+        throw new Error(`Employee ID ${employeeId} not found in system`);
+      }
     }
 
     console.log('🔐 Attempting login with email:', email);
 
-    // Sign in with Firebase Authentication ONLY
+    // Sign in with Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     console.log('✅ Firebase Auth successful, UID:', user.uid);
 
-    // First, try to get user data from Firestore
+    // Get user data from Firestore
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -52,7 +71,7 @@ export const loginUser = async (emailOrId, password) => {
       console.log('⚠️ User not in Firestore, checking hardcoded mapping');
     }
 
-    // Fallback to hardcoded mapping
+    // Fallback to hardcoded mapping (only for SuperAdmin, Admin, Client)
     const userInfo = userRoles[email];
     
     if (userInfo) {
@@ -65,6 +84,11 @@ export const loginUser = async (emailOrId, password) => {
         specialization: userInfo.specialization || null,
         employeeId: userInfo.employeeId || null
       };
+    }
+    
+    // If we reach here and it was an employee ID login, something is wrong
+    if (isEmployeeIdLogin) {
+      throw new Error('Employee data not found in system');
     }
     
     // Final fallback - treat as client
