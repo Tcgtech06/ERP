@@ -269,10 +269,17 @@ function SuperAdminDashboard({ user, onLogout }) {
       for (const assigneeName of assignees) {
         const employee = employees.find(emp => emp.name === assigneeName)
         
+        console.log('🔍 Found employee data:', employee);
+        
         // Use Firebase UID if available, otherwise use email as fallback
         const assignedToId = employee?.uid || employee?.email || assigneeName
         
-        console.log('Creating task for:', assigneeName, 'with ID:', assignedToId)
+        console.log('📝 Creating task for:', {
+          assigneeName,
+          employeeUid: employee?.uid,
+          employeeEmail: employee?.email,
+          assignedToId
+        });
         
         const newTask = {
           title,
@@ -298,7 +305,9 @@ function SuperAdminDashboard({ user, onLogout }) {
           ]
         }
 
+        console.log('🚀 Task object to be created:', newTask);
         await createTask(newTask)
+        console.log('✅ Task created successfully');
       }
 
       setTitle('')

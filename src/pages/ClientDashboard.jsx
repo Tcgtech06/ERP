@@ -164,7 +164,7 @@ function ClientDashboard({ user, onLogout }) {
                 <div className="task-card-content">
                   <h3>{task.title}</h3>
                   <p>{task.description}</p>
-                  {task.assignedTo && <p style={{ marginTop: '12px', fontWeight: '500' }}>Assigned to: {task.assignedTo}</p>}
+                  {task.assignedTo && <p style={{ marginTop: '12px', fontWeight: '500' }}>Assigned to: {task.assignedToName || task.assignedToEmail || task.assignedTo}</p>}
                   <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '8px' }}>
                     Created: {new Date(task.createdAt).toLocaleDateString()}
                   </p>

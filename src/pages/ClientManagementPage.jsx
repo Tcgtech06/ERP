@@ -211,7 +211,7 @@ function ClientManagementPage({ user, onBack }) {
                     <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
                       Created: {new Date(task.createdAt).toLocaleDateString()}
-                      {task.assignedTo && ` • Assigned to: ${task.assignedTo}`}
+                      {task.assignedTo && ` • Assigned to: ${task.assignedToName || task.assignedToEmail || task.assignedTo}`}
                     </p>
                   </div>
                   <div style={{ marginLeft: '16px' }}>

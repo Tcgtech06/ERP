@@ -518,7 +518,7 @@ function AdminDashboard({ user, onLogout }) {
                   <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '8px' }}>
                     From: {task.clientName}
                   </p>
-                  {task.assignedTo && <p style={{ marginTop: '12px', fontWeight: '500' }}>Assigned to: {task.assignedTo}</p>}
+                  {task.assignedTo && <p style={{ marginTop: '12px', fontWeight: '500' }}>Assigned to: {task.assignedToName || task.assignedToEmail || task.assignedTo}</p>}
 
                   {task.status !== 'completed' && (
                     <div className="status-update-section">

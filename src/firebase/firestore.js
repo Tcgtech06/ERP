@@ -164,23 +164,42 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
         // Filter employee tasks by UID or email
         if (userRole === 'employee') {
           const beforeFilter = tasks.length;
+          console.log('🔍 Filtering tasks for employee:', { userId, userEmail });
+          
+          // Log all tasks to see what we have
+          tasks.forEach(task => {
+            console.log('📋 Task data:', {
+              id: task.id,
+              title: task.title,
+              assignedTo: task.assignedTo,
+              assignedToEmail: task.assignedToEmail,
+              assignedToName: task.assignedToName
+            });
+          });
+          
           tasks = tasks.filter(task => {
-            const match = task.assignedTo === userId || 
-                         task.assignedTo === userEmail ||
-                         task.assignedToEmail === userEmail;
-            if (match) {
-              console.log('✅ Task matched for employee:', {
-                taskId: task.id,
-                title: task.title,
-                assignedTo: task.assignedTo,
-                assignedToEmail: task.assignedToEmail,
-                userId,
-                userEmail
-              });
-            }
+            // Check multiple conditions for matching
+            const matchByUid = task.assignedTo === userId;
+            const matchByEmail = task.assignedTo === userEmail;
+            const matchByAssignedToEmail = task.assignedToEmail === userEmail;
+            
+            const match = matchByUid || matchByEmail || matchByAssignedToEmail;
+            
+            console.log(`🔍 Task "${task.title}" match check:`, {
+              taskId: task.id,
+              assignedTo: task.assignedTo,
+              assignedToEmail: task.assignedToEmail,
+              userId,
+              userEmail,
+              matchByUid,
+              matchByEmail,
+              matchByAssignedToEmail,
+              finalMatch: match
+            });
+            
             return match;
           });
-          console.log(`🔍 Employee tasks filtered: ${beforeFilter} -> ${tasks.length}`);
+          console.log(`✅ Employee tasks filtered: ${beforeFilter} -> ${tasks.length}`);
         }
         
         callback(tasks);
