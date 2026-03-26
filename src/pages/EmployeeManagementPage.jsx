@@ -11,7 +11,6 @@ function EmployeeManagementPage({ user, onBack }) {
   const [error, setError] = useState(null)
   const [newEmployee, setNewEmployee] = useState({
     name: '',
-    email: '',
     password: '',
     specialization: 'Software Development',
     status: 'Active'
@@ -56,11 +55,16 @@ function EmployeeManagementPage({ user, onBack }) {
       // Generate employee ID
       const employeeId = await generateEmployeeId(newEmployee.specialization)
       
+      // Auto-generate email from employee ID
+      const email = `${employeeId.toLowerCase()}@tcg.com`
+      
+      console.log('📝 Creating employee:', { name: newEmployee.name, employeeId, email })
+      
       // Create user in Firebase Authentication
       const auth = getAuth()
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        newEmployee.email,
+        email,
         newEmployee.password
       )
       
@@ -68,7 +72,7 @@ function EmployeeManagementPage({ user, onBack }) {
       const employeeData = {
         uid: userCredential.user.uid,
         name: newEmployee.name,
-        email: newEmployee.email,
+        email: email,
         employeeId: employeeId,
         specialization: newEmployee.specialization,
         status: newEmployee.status,
@@ -79,17 +83,16 @@ function EmployeeManagementPage({ user, onBack }) {
       
       setNewEmployee({ 
         name: '', 
-        email: '', 
         password: '',
         specialization: 'Software Development', 
         status: 'Active' 
       })
       setShowAddForm(false)
-      alert(`Employee created successfully! Employee ID: ${employeeId}`)
+      alert(`Employee created successfully!\n\nEmployee ID: ${employeeId}\nPassword: ${newEmployee.password}\n\nEmployee can login using Employee ID and password.`)
     } catch (error) {
       console.error('Error adding employee:', error)
       if (error.code === 'auth/email-already-in-use') {
-        alert('Email already in use')
+        alert('This employee ID is already in use')
       } else if (error.code === 'auth/weak-password') {
         alert('Password should be at least 6 characters')
       } else {
@@ -205,27 +208,6 @@ function EmployeeManagementPage({ user, onBack }) {
                 />
               </div>
               <div className="form-group">
-                <label>Email Address</label>
-                <input
-                  type="email"
-                  placeholder="Enter email address (e.g., employee@tcg.com)"
-                  value={newEmployee.email}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter password (min 6 characters)"
-                  value={newEmployee.password}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
-                  required
-                  minLength={6}
-                />
-              </div>
-              <div className="form-group">
                 <label>Specialization</label>
                 <select 
                   value={newEmployee.specialization} 
@@ -237,6 +219,20 @@ function EmployeeManagementPage({ user, onBack }) {
                 </select>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Employee ID will be auto-generated (TT for Software, TD for Marketing, TB for BDO)
+                </p>
+              </div>
+              <div className="form-group">
+                <label>Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter password (min 6 characters)"
+                  value={newEmployee.password}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                  required
+                  minLength={6}
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Employee will use Employee ID and this password to login
                 </p>
               </div>
               <div className="form-group">
@@ -305,11 +301,11 @@ function EmployeeManagementPage({ user, onBack }) {
                   </div>
                   <div>
                     <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{employee.name || 'Unknown'}</h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>{employee.employeeId || 'N/A'}</p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--primary-green)' }}>{employee.employeeId || 'N/A'}</p>
                   </div>
                 </div>
                 
-                <p style={{ margin: '8px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{employee.email || 'No email'}</p>
+                <p style={{ margin: '8px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>Specialization: {employee.specialization || 'Unknown'}</p>
                 
                 <div style={{ marginBottom: '12px' }}>
                   <span className={`status ${
