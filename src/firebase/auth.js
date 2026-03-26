@@ -1,5 +1,7 @@
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from './config';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './config';
 
 // User roles and credentials mapping (for basic user data)
 const userRoles = {
@@ -21,14 +23,40 @@ export const loginUser = async (emailOrId, password) => {
       email = `${emailOrId}@tcg.com`;
     }
 
+    console.log('🔐 Attempting login with email:', email);
+
     // Sign in with Firebase Authentication ONLY
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Get user data from our mapping
+    console.log('✅ Firebase Auth successful, UID:', user.uid);
+
+    // First, try to get user data from Firestore
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        console.log('✅ Found user in Firestore:', userData);
+        return {
+          uid: user.uid,
+          email: user.email,
+          name: userData.name,
+          role: userData.role,
+          specialization: userData.specialization || null,
+          employeeId: userData.employeeId || null
+        };
+      }
+    } catch (firestoreError) {
+      console.log('⚠️ User not in Firestore, checking hardcoded mapping');
+    }
+
+    // Fallback to hardcoded mapping
     const userInfo = userRoles[email];
     
     if (userInfo) {
+      console.log('✅ Found user in hardcoded mapping:', userInfo);
       return {
         uid: user.uid,
         email: user.email,
@@ -39,7 +67,8 @@ export const loginUser = async (emailOrId, password) => {
       };
     }
     
-    // Fallback if no mapping found
+    // Final fallback - treat as client
+    console.log('⚠️ No user data found, defaulting to client role');
     return {
       uid: user.uid,
       email: user.email,
@@ -48,7 +77,7 @@ export const loginUser = async (emailOrId, password) => {
     };
     
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
     
     // Provide user-friendly error messages
     if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
