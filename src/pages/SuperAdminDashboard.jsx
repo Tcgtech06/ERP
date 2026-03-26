@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeToTasks, createTask, updateTask, deleteTask, getUsers, getEmployees, subscribeToBDOClients, updateBDOClient, subscribeToSoftwareProjects, updateSoftwareProject } from '../firebase/firestore'
+import { subscribeToTasks, createTask, updateTask, deleteTask, getUsers, subscribeToEmployees, subscribeToBDOClients, updateBDOClient, subscribeToSoftwareProjects, updateSoftwareProject } from '../firebase/firestore'
 import { uploadMultipleFiles, getFileIcon, formatFileSize, validateFileType, validateFileSize } from '../firebase/storage'
 import BDOReportsPage from './BDOReportsPage'
 import SoftwareProjectsPage from './SoftwareProjectsPage'
@@ -37,7 +37,7 @@ function SuperAdminDashboard({ user, onLogout }) {
   const [showNoteForm, setShowNoteForm] = useState({})
   const [currentView, setCurrentView] = useState('dashboard')
   const [clients, setClients] = useState([])
-  const [employees, setEmployees] = useState(mockEmployees)
+  const [employees, setEmployees] = useState([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [attachments, setAttachments] = useState([])
   const [uploading, setUploading] = useState(false)
@@ -60,59 +60,46 @@ function SuperAdminDashboard({ user, onLogout }) {
       setSoftwareProjects(projectsData)
     })
 
-    // Load users and employees from Firebase
-    loadUsersAndEmployees()
+    // Subscribe to real-time employees updates
+    const unsubscribeEmployees = subscribeToEmployees((employeesData) => {
+      console.log('📋 SuperAdmin: Employees updated:', employeesData.length)
+      // If no employees in Firebase, use mock data as fallback
+      if (employeesData.length === 0) {
+        console.log('⚠️ No Firebase employees, using mock data')
+        setEmployees(mockEmployees)
+      } else {
+        console.log('✅ Using Firebase employees:', employeesData)
+        setEmployees(employeesData)
+      }
+    })
+
+    // Load users (clients) from Firebase
+    loadUsers()
 
     return () => {
       unsubscribeTasks()
       unsubscribeBDO()
       unsubscribeProjects()
+      unsubscribeEmployees()
     }
   }, [user.uid, user.role])
 
-  const loadUsersAndEmployees = async () => {
+  const loadUsers = async () => {
     try {
-      console.log('📥 SuperAdmin: Loading users and employees...');
-      const [usersData, employeesData] = await Promise.all([
-        getUsers(),
-        getEmployees()
-      ])
+      console.log('📥 SuperAdmin: Loading users...')
+      const usersData = await getUsers()
       
-      console.log('Users data:', usersData);
-      console.log('Employees data from Firebase:', employeesData);
+      console.log('Users data:', usersData)
       
       if (usersData.length > 0) {
         const clientUsers = usersData.filter(u => u.role === 'client')
         if (clientUsers.length > 0) {
           setClients(clientUsers)
-          console.log('✅ Clients set:', clientUsers.length);
+          console.log('✅ Clients set:', clientUsers.length)
         }
-      }
-      
-      // ALWAYS use mockEmployees to ensure all 3 types are available
-      // Firebase data will be merged if available
-      if (employeesData.length > 0) {
-        console.log('✅ Using Firebase employees:', employeesData.length);
-        // Merge Firebase data with mock data, prioritizing Firebase
-        const mergedEmployees = [...mockEmployees];
-        employeesData.forEach(fbEmp => {
-          const existingIndex = mergedEmployees.findIndex(m => m.employeeId === fbEmp.employeeId);
-          if (existingIndex >= 0) {
-            mergedEmployees[existingIndex] = fbEmp;
-          } else {
-            mergedEmployees.push(fbEmp);
-          }
-        });
-        setEmployees(mergedEmployees);
-        console.log('✅ Merged employees:', mergedEmployees);
-      } else {
-        console.log('⚠️ No Firebase employees, using mock data');
-        setEmployees(mockEmployees);
       }
     } catch (error) {
       console.error('❌ Error loading users:', error)
-      console.log('Using mock employees as fallback');
-      setEmployees(mockEmployees)
     }
   }
 

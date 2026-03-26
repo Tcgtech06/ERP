@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeToTasks, updateTask, getEmployees, createTask, getUsers } from '../firebase/firestore'
+import { subscribeToTasks, updateTask, subscribeToEmployees, createTask, getUsers } from '../firebase/firestore'
 import { uploadMultipleFiles, getFileIcon, formatFileSize, validateFileType, validateFileSize } from '../firebase/storage'
 
 const mockEmployees = [
@@ -11,7 +11,7 @@ const mockEmployees = [
 function AdminDashboard({ user, onLogout }) {
   const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
-  const [employees, setEmployees] = useState(mockEmployees)
+  const [employees, setEmployees] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState({})
   const [statusUpdate, setStatusUpdate] = useState({})
   const [selectedProjectEmployee, setSelectedProjectEmployee] = useState({})
@@ -28,15 +28,30 @@ function AdminDashboard({ user, onLogout }) {
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
-    const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
+    const unsubscribeTasks = subscribeToTasks(user.uid, user.role, (tasksData) => {
       setTasks(tasksData)
     })
 
-    // Load employees and clients from Firebase
-    loadEmployees()
+    // Subscribe to real-time employees updates
+    const unsubscribeEmployees = subscribeToEmployees((employeesData) => {
+      console.log('📋 Admin: Employees updated:', employeesData.length)
+      // If no employees in Firebase, use mock data as fallback
+      if (employeesData.length === 0) {
+        console.log('⚠️ No Firebase employees, using mock data')
+        setEmployees(mockEmployees)
+      } else {
+        console.log('✅ Using Firebase employees:', employeesData)
+        setEmployees(employeesData)
+      }
+    })
+
+    // Load clients from Firebase
     loadClients()
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribeTasks()
+      unsubscribeEmployees()
+    }
   }, [user.uid, user.role])
 
   const loadClients = async () => {
@@ -46,37 +61,6 @@ function AdminDashboard({ user, onLogout }) {
       setClients(clientUsers)
     } catch (error) {
       console.error('Error loading clients:', error)
-    }
-  }
-
-  const loadEmployees = async () => {
-    try {
-      console.log('📥 Admin: Loading employees...');
-      const employeesData = await getEmployees()
-      console.log('Employees data from Firebase:', employeesData);
-      
-      // ALWAYS ensure all 3 employee types are available
-      if (employeesData.length > 0) {
-        console.log('✅ Using Firebase employees:', employeesData.length);
-        // Merge Firebase data with mock data
-        const mergedEmployees = [...mockEmployees];
-        employeesData.forEach(fbEmp => {
-          const existingIndex = mergedEmployees.findIndex(m => m.employeeId === fbEmp.employeeId);
-          if (existingIndex >= 0) {
-            mergedEmployees[existingIndex] = fbEmp;
-          } else {
-            mergedEmployees.push(fbEmp);
-          }
-        });
-        setEmployees(mergedEmployees);
-        console.log('✅ Merged employees:', mergedEmployees);
-      } else {
-        console.log('⚠️ No Firebase employees, using mock data');
-        setEmployees(mockEmployees);
-      }
-    } catch (error) {
-      console.error('❌ Error loading employees:', error)
-      setEmployees(mockEmployees)
     }
   }
 
