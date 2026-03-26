@@ -6,6 +6,8 @@ function EmployeeManagementPage({ user, onBack }) {
   const [employees, setEmployees] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -112,6 +114,45 @@ function EmployeeManagementPage({ user, onBack }) {
     }
   }
 
+  const handleEditEmployee = (employee) => {
+    setEditingEmployee({
+      id: employee.id,
+      name: employee.name,
+      specialization: employee.specialization,
+      status: employee.status,
+      employeeId: employee.employeeId
+    })
+    setShowEditForm(true)
+    setShowAddForm(false)
+  }
+
+  const handleUpdateEmployee = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    
+    try {
+      await updateEmployee(editingEmployee.id, {
+        name: editingEmployee.name,
+        specialization: editingEmployee.specialization,
+        status: editingEmployee.status
+      })
+      
+      setEditingEmployee(null)
+      setShowEditForm(false)
+      alert('Employee updated successfully!')
+    } catch (error) {
+      console.error('Error updating employee:', error)
+      alert('Failed to update employee: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingEmployee(null)
+    setShowEditForm(false)
+  }
+
   const handleDeleteEmployee = async (employeeId) => {
     if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return
     
@@ -188,10 +229,61 @@ function EmployeeManagementPage({ user, onBack }) {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <h2>Employee Management</h2>
-          <button className="btn-green" onClick={() => setShowAddForm(!showAddForm)}>
+          <button className="btn-green" onClick={() => { setShowAddForm(!showAddForm); setShowEditForm(false); }}>
             {showAddForm ? 'Cancel' : 'Add New Employee'}
           </button>
         </div>
+
+        {showEditForm && editingEmployee && (
+          <div style={{ background: 'var(--light-yellow)', padding: '24px', borderRadius: '12px', marginBottom: '20px', border: '2px solid var(--primary-yellow)' }}>
+            <h3 style={{ marginBottom: '20px' }}>Edit Employee: {editingEmployee.employeeId}</h3>
+            <form onSubmit={handleUpdateEmployee}>
+              <div className="form-group">
+                <label>Employee Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter employee name"
+                  value={editingEmployee.name}
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Specialization</label>
+                <select 
+                  value={editingEmployee.specialization} 
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, specialization: e.target.value })}
+                >
+                  <option value="Software Development">Software Development</option>
+                  <option value="Digital Marketing">Digital Marketing</option>
+                  <option value="BDO">BDO</option>
+                </select>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Note: Employee ID cannot be changed
+                </p>
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select 
+                  value={editingEmployee.status} 
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, status: e.target.value })}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                  <option value="On Leave">On Leave</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="submit" className="btn-green" disabled={loading}>
+                  {loading ? 'Updating...' : 'Update Employee'}
+                </button>
+                <button type="button" className="btn-red" onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {showAddForm && (
           <div style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: '12px', marginBottom: '20px' }}>
@@ -321,6 +413,16 @@ function EmployeeManagementPage({ user, onBack }) {
                 </div>
                 
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button 
+                    className="btn-yellow" 
+                    style={{ fontSize: '12px', padding: '6px 12px' }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEditEmployee(employee)
+                    }}
+                  >
+                    Edit
+                  </button>
                   <button 
                     className="btn-green" 
                     style={{ fontSize: '12px', padding: '6px 12px' }}
