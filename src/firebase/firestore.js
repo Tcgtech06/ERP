@@ -16,22 +16,31 @@ import { db } from './config';
 // Tasks collection functions
 export const createTask = async (taskData) => {
   try {
-    const docRef = await addDoc(collection(db, 'tasks'), {
+    console.log('🔥 Creating task in Firebase:', taskData);
+    
+    const taskToCreate = {
       ...taskData,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      statusHistory: [
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Only add default statusHistory if not provided
+    if (!taskData.statusHistory) {
+      taskToCreate.statusHistory = [
         {
           status: taskData.status || 'pending',
-          updatedBy: taskData.clientName,
+          updatedBy: taskData.createdBy || taskData.clientName || 'System',
           updatedAt: new Date().toISOString(),
-          role: 'client'
+          role: taskData.role || 'client'
         }
-      ]
-    });
+      ];
+    }
+    
+    const docRef = await addDoc(collection(db, 'tasks'), taskToCreate);
+    console.log('✅ Task created with ID:', docRef.id);
     return docRef.id;
   } catch (error) {
-    console.error('Error creating task:', error);
+    console.error('❌ Error creating task:', error);
     throw error;
   }
 };
@@ -102,6 +111,8 @@ export const getTasks = async (userId, userRole) => {
 // Real-time tasks listener with timeout
 export const subscribeToTasks = (userId, userRole, callback, userEmail = null) => {
   try {
+    console.log('🔍 Subscribing to tasks:', { userId, userRole, userEmail });
+    
     let q;
     
     if (userRole === 'client') {
@@ -116,7 +127,7 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
         orderBy('createdAt', 'desc')
       );
     } else if (userRole === 'employee') {
-      // Query by UID or email
+      // Query by UID or email - get all tasks and filter client-side
       q = query(
         collection(db, 'tasks'),
         orderBy('createdAt', 'desc')
@@ -148,25 +159,40 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
           tasks.push({ id: doc.id, ...doc.data() });
         });
         
+        console.log(`📊 Total tasks from Firebase: ${tasks.length}`);
+        
         // Filter employee tasks by UID or email
         if (userRole === 'employee') {
-          tasks = tasks.filter(task => 
-            task.assignedTo === userId || 
-            task.assignedTo === userEmail ||
-            task.assignedToEmail === userEmail
-          );
+          const beforeFilter = tasks.length;
+          tasks = tasks.filter(task => {
+            const match = task.assignedTo === userId || 
+                         task.assignedTo === userEmail ||
+                         task.assignedToEmail === userEmail;
+            if (match) {
+              console.log('✅ Task matched for employee:', {
+                taskId: task.id,
+                title: task.title,
+                assignedTo: task.assignedTo,
+                assignedToEmail: task.assignedToEmail,
+                userId,
+                userEmail
+              });
+            }
+            return match;
+          });
+          console.log(`🔍 Employee tasks filtered: ${beforeFilter} -> ${tasks.length}`);
         }
         
         callback(tasks);
       },
       (error) => {
-        console.error('Error in tasks subscription:', error);
+        console.error('❌ Error in tasks subscription:', error);
         clearTimeout(initialLoadTimeout);
         callback([]);
       }
     );
   } catch (error) {
-    console.error('Error subscribing to tasks:', error);
+    console.error('❌ Error subscribing to tasks:', error);
     callback([]);
     return () => {};
   }

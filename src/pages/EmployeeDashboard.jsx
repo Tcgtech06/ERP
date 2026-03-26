@@ -9,8 +9,15 @@ function EmployeeDashboard({ user, onLogout }) {
 
   useEffect(() => {
     // Subscribe to real-time tasks updates
+    console.log('🔍 Employee Dashboard - User Info:', {
+      uid: user.uid,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    })
+    
     const unsubscribe = subscribeToTasks(user.uid, user.role, (tasksData) => {
-      console.log('Employee tasks loaded:', tasksData.length)
+      console.log('📋 Employee tasks loaded:', tasksData.length, tasksData)
       setTasks(tasksData)
     }, user.email)
 
