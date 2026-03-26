@@ -8,6 +8,7 @@ function EmployeeManagementPage({ user, onBack }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     email: '',
@@ -17,14 +18,35 @@ function EmployeeManagementPage({ user, onBack }) {
   })
 
   useEffect(() => {
-    // Subscribe to real-time employees updates
-    const unsubscribe = subscribeToEmployees((employeesData) => {
-      console.log('📋 Employees loaded:', employeesData)
-      setEmployees(employeesData)
-    })
+    console.log('🔍 EmployeeManagementPage: Component mounted')
+    try {
+      // Subscribe to real-time employees updates
+      const unsubscribe = subscribeToEmployees((employeesData) => {
+        console.log('📋 Employees loaded:', employeesData)
+        setEmployees(employeesData)
+      })
 
-    return () => unsubscribe()
+      return () => {
+        console.log('🔍 EmployeeManagementPage: Component unmounting')
+        unsubscribe()
+      }
+    } catch (err) {
+      console.error('❌ Error in useEffect:', err)
+      setError(err.message)
+    }
   }, [])
+
+  if (error) {
+    return (
+      <div className="container">
+        <div className="card" style={{ background: 'var(--light-red)', border: '2px solid var(--primary-red)' }}>
+          <h2>Error Loading Employee Management</h2>
+          <p>{error}</p>
+          <button className="btn-yellow" onClick={onBack}>Back to Dashboard</button>
+        </div>
+      </div>
+    )
+  }
 
   const handleAddEmployee = async (e) => {
     e.preventDefault()

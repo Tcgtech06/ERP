@@ -1,7 +1,8 @@
 import { 
   collection, 
   doc, 
-  addDoc, 
+  addDoc,
+  setDoc,
   updateDoc, 
   deleteDoc, 
   getDocs, 
@@ -571,14 +572,22 @@ export const subscribeToSoftwareProjects = (callback) => {
 export const createEmployee = async (employeeData) => {
   try {
     console.log('🔥 Creating employee in Firestore:', employeeData);
-    const docRef = await addDoc(collection(db, 'users'), {
+    
+    // Use the UID as the document ID
+    if (!employeeData.uid) {
+      throw new Error('Employee UID is required');
+    }
+    
+    const employeeRef = doc(db, 'users', employeeData.uid);
+    await setDoc(employeeRef, {
       ...employeeData,
       role: 'employee',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    console.log('✅ Employee created with ID:', docRef.id);
-    return docRef.id;
+    
+    console.log('✅ Employee created with UID:', employeeData.uid);
+    return employeeData.uid;
   } catch (error) {
     console.error('❌ Error creating employee:', error);
     throw error;
