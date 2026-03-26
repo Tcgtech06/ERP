@@ -22,19 +22,29 @@ export const loginUser = async (emailOrId, password) => {
       const employeeId = emailOrId.toUpperCase();
       
       console.log('🔍 Employee ID login detected:', employeeId);
+      console.log('🔍 Searching Firestore for employeeId:', employeeId);
       
       // Search for employee by employeeId in Firestore
       try {
         const q = query(collection(db, 'users'), where('employeeId', '==', employeeId));
         const querySnapshot = await getDocs(q);
         
+        console.log('🔍 Query results:', querySnapshot.size, 'documents found');
+        
         if (!querySnapshot.empty) {
           const employeeDoc = querySnapshot.docs[0];
           const employeeData = employeeDoc.data();
           email = employeeData.email;
-          console.log('✅ Found employee in Firestore:', employeeData.name, 'Email:', email);
+          console.log('✅ Found employee in Firestore:', {
+            name: employeeData.name,
+            email: email,
+            employeeId: employeeData.employeeId,
+            specialization: employeeData.specialization
+          });
         } else {
-          throw new Error(`Employee ID ${employeeId} not found`);
+          console.error('❌ No employee found with employeeId:', employeeId);
+          console.log('💡 Tip: Make sure the employee was created through Employee Management page');
+          throw new Error(`Employee ID ${employeeId} not found in system`);
         }
       } catch (error) {
         console.error('❌ Error finding employee:', error);
