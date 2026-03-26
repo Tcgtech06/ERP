@@ -566,3 +566,95 @@ export const subscribeToSoftwareProjects = (callback) => {
     return () => {};
   }
 };
+
+// Employee Management Functions
+export const createEmployee = async (employeeData) => {
+  try {
+    console.log('🔥 Creating employee in Firestore:', employeeData);
+    const docRef = await addDoc(collection(db, 'users'), {
+      ...employeeData,
+      role: 'employee',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    console.log('✅ Employee created with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('❌ Error creating employee:', error);
+    throw error;
+  }
+};
+
+export const updateEmployee = async (employeeId, updates) => {
+  try {
+    const employeeRef = doc(db, 'users', employeeId);
+    await updateDoc(employeeRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating employee:', error);
+    throw error;
+  }
+};
+
+export const deleteEmployee = async (employeeId) => {
+  try {
+    await deleteDoc(doc(db, 'users', employeeId));
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    throw error;
+  }
+};
+
+export const subscribeToEmployees = (callback) => {
+  try {
+    const q = query(collection(db, 'users'), where('role', '==', 'employee'));
+    return onSnapshot(q, (querySnapshot) => {
+      const employees = [];
+      querySnapshot.forEach((doc) => {
+        employees.push({ id: doc.id, uid: doc.id, ...doc.data() });
+      });
+      console.log('📊 Real-time employees update:', employees.length);
+      callback(employees);
+    }, (error) => {
+      console.error('Error in employees subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error subscribing to employees:', error);
+    return () => {};
+  }
+};
+
+// Generate next employee ID based on specialization
+export const generateEmployeeId = async (specialization) => {
+  try {
+    const prefix = specialization === 'Software Development' ? 'TT' : 
+                   specialization === 'Digital Marketing' ? 'TD' : 
+                   specialization === 'BDO' ? 'TB' : 'TE';
+    
+    // Get all employees with this prefix
+    const q = query(collection(db, 'users'), where('role', '==', 'employee'));
+    const querySnapshot = await getDocs(q);
+    
+    let maxNumber = 0;
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.employeeId && data.employeeId.startsWith(prefix)) {
+        const number = parseInt(data.employeeId.substring(2));
+        if (!isNaN(number) && number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    });
+    
+    const nextNumber = maxNumber + 1;
+    const employeeId = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+    console.log('🆔 Generated employee ID:', employeeId);
+    return employeeId;
+  } catch (error) {
+    console.error('Error generating employee ID:', error);
+    throw error;
+  }
+};
