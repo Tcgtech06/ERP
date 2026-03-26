@@ -140,21 +140,8 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
       );
     }
 
-    // Set a timeout for initial load
-    let initialLoadTimeout = setTimeout(() => {
-      console.warn('Firestore taking too long, using empty data');
-      callback([]);
-    }, 5000);
-
-    let isFirstLoad = true;
-
     return onSnapshot(q, 
       (querySnapshot) => {
-        if (isFirstLoad) {
-          clearTimeout(initialLoadTimeout);
-          isFirstLoad = false;
-        }
-        
         let tasks = [];
         querySnapshot.forEach((doc) => {
           tasks.push({ id: doc.id, ...doc.data() });
@@ -167,17 +154,6 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
           const beforeFilter = tasks.length;
           console.log('🔍 Filtering tasks for employee:', { userId, userEmail });
           
-          // Log all tasks to see what we have
-          tasks.forEach(task => {
-            console.log('📋 Task data:', {
-              id: task.id,
-              title: task.title,
-              assignedTo: task.assignedTo,
-              assignedToEmail: task.assignedToEmail,
-              assignedToName: task.assignedToName
-            });
-          });
-          
           tasks = tasks.filter(task => {
             // Check multiple conditions for matching
             const matchByUid = task.assignedTo === userId;
@@ -186,17 +162,11 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
             
             const match = matchByUid || matchByEmail || matchByAssignedToEmail;
             
-            console.log(`🔍 Task "${task.title}" match check:`, {
-              taskId: task.id,
-              assignedTo: task.assignedTo,
-              assignedToEmail: task.assignedToEmail,
-              userId,
-              userEmail,
-              matchByUid,
-              matchByEmail,
-              matchByAssignedToEmail,
-              finalMatch: match
-            });
+            if (match) {
+              console.log(`✅ Task "${task.title}" MATCHED`);
+            } else {
+              console.log(`❌ Task "${task.title}" NOT matched - assignedTo: ${task.assignedTo}, assignedToEmail: ${task.assignedToEmail}, userId: ${userId}, userEmail: ${userEmail}`);
+            }
             
             return match;
           });
@@ -207,7 +177,6 @@ export const subscribeToTasks = (userId, userRole, callback, userEmail = null) =
       },
       (error) => {
         console.error('❌ Error in tasks subscription:', error);
-        clearTimeout(initialLoadTimeout);
         callback([]);
       }
     );
