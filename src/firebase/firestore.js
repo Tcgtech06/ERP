@@ -636,3 +636,101 @@ export const generateEmployeeId = async (specialization) => {
     throw error;
   }
 };
+
+// Admin Management Functions
+export const createAdmin = async (adminData) => {
+  try {
+    console.log('🔥 Creating admin in Firestore:', adminData);
+    
+    // Use the UID as the document ID
+    if (!adminData.uid) {
+      throw new Error('Admin UID is required');
+    }
+    
+    const adminRef = doc(db, 'users', adminData.uid);
+    await setDoc(adminRef, {
+      ...adminData,
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    
+    console.log('✅ Admin created with UID:', adminData.uid);
+    return adminData.uid;
+  } catch (error) {
+    console.error('❌ Error creating admin:', error);
+    throw error;
+  }
+};
+
+export const updateAdmin = async (adminId, updates) => {
+  try {
+    const adminRef = doc(db, 'users', adminId);
+    await updateDoc(adminRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating admin:', error);
+    throw error;
+  }
+};
+
+export const deleteAdmin = async (adminId) => {
+  try {
+    await deleteDoc(doc(db, 'users', adminId));
+  } catch (error) {
+    console.error('Error deleting admin:', error);
+    throw error;
+  }
+};
+
+export const subscribeToAdmins = (callback) => {
+  try {
+    const q = query(collection(db, 'users'), where('role', '==', 'admin'));
+    return onSnapshot(q, (querySnapshot) => {
+      const admins = [];
+      querySnapshot.forEach((doc) => {
+        admins.push({ id: doc.id, uid: doc.id, ...doc.data() });
+      });
+      console.log('📊 Real-time admins update:', admins.length);
+      callback(admins);
+    }, (error) => {
+      console.error('Error in admins subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error subscribing to admins:', error);
+    return () => {};
+  }
+};
+
+// Generate next admin ID
+export const generateAdminId = async () => {
+  try {
+    const prefix = 'TCGadmin';
+    
+    // Get all admins
+    const q = query(collection(db, 'users'), where('role', '==', 'admin'));
+    const querySnapshot = await getDocs(q);
+    
+    let maxNumber = 0;
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.adminId && data.adminId.startsWith(prefix)) {
+        const number = parseInt(data.adminId.substring(prefix.length));
+        if (!isNaN(number) && number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    });
+    
+    const nextNumber = maxNumber + 1;
+    const adminId = `${prefix}${String(nextNumber).padStart(2, '0')}`;
+    console.log('🆔 Generated admin ID:', adminId);
+    return adminId;
+  } catch (error) {
+    console.error('Error generating admin ID:', error);
+    throw error;
+  }
+};

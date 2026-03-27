@@ -15,40 +15,76 @@ export const loginUser = async (emailOrId, password) => {
   try {
     let email = emailOrId;
     let isEmployeeIdLogin = false;
+    let isAdminIdLogin = false;
     
-    // Check if it's an employee ID (TT001, TD001, TB001, etc.) - NOT an email
+    // Check if it's an employee ID (TT001, TD001, TB001, etc.) or admin ID (TCGadmin01, etc.) - NOT an email
     if (!emailOrId.includes('@')) {
-      isEmployeeIdLogin = true;
-      const employeeId = emailOrId.toUpperCase();
+      const inputId = emailOrId.toUpperCase();
       
-      console.log('🔍 Employee ID login detected:', employeeId);
-      console.log('🔍 Searching Firestore for employeeId:', employeeId);
-      
-      // Search for employee by employeeId in Firestore
-      try {
-        const q = query(collection(db, 'users'), where('employeeId', '==', employeeId));
-        const querySnapshot = await getDocs(q);
+      // Check if it's an admin ID (starts with TCGADMIN)
+      if (inputId.startsWith('TCGADMIN')) {
+        isAdminIdLogin = true;
+        console.log('🔍 Admin ID login detected:', inputId);
+        console.log('🔍 Searching Firestore for adminId:', inputId);
         
-        console.log('🔍 Query results:', querySnapshot.size, 'documents found');
+        // Search for admin by adminId in Firestore
+        try {
+          const q = query(collection(db, 'users'), where('adminId', '==', inputId));
+          const querySnapshot = await getDocs(q);
+          
+          console.log('🔍 Query results:', querySnapshot.size, 'documents found');
+          
+          if (!querySnapshot.empty) {
+            const adminDoc = querySnapshot.docs[0];
+            const adminData = adminDoc.data();
+            email = adminData.email;
+            console.log('✅ Found admin in Firestore:', {
+              name: adminData.name,
+              email: email,
+              adminId: adminData.adminId
+            });
+          } else {
+            console.error('❌ No admin found with adminId:', inputId);
+            throw new Error(`Admin ID ${inputId} not found in system`);
+          }
+        } catch (error) {
+          console.error('❌ Error finding admin:', error);
+          throw new Error(`Admin ID ${inputId} not found in system`);
+        }
+      } else {
+        // It's an employee ID
+        isEmployeeIdLogin = true;
+        const employeeId = inputId;
         
-        if (!querySnapshot.empty) {
-          const employeeDoc = querySnapshot.docs[0];
-          const employeeData = employeeDoc.data();
-          email = employeeData.email;
-          console.log('✅ Found employee in Firestore:', {
-            name: employeeData.name,
-            email: email,
-            employeeId: employeeData.employeeId,
-            specialization: employeeData.specialization
-          });
-        } else {
-          console.error('❌ No employee found with employeeId:', employeeId);
-          console.log('💡 Tip: Make sure the employee was created through Employee Management page');
+        console.log('🔍 Employee ID login detected:', employeeId);
+        console.log('🔍 Searching Firestore for employeeId:', employeeId);
+        
+        // Search for employee by employeeId in Firestore
+        try {
+          const q = query(collection(db, 'users'), where('employeeId', '==', employeeId));
+          const querySnapshot = await getDocs(q);
+          
+          console.log('🔍 Query results:', querySnapshot.size, 'documents found');
+          
+          if (!querySnapshot.empty) {
+            const employeeDoc = querySnapshot.docs[0];
+            const employeeData = employeeDoc.data();
+            email = employeeData.email;
+            console.log('✅ Found employee in Firestore:', {
+              name: employeeData.name,
+              email: email,
+              employeeId: employeeData.employeeId,
+              specialization: employeeData.specialization
+            });
+          } else {
+            console.error('❌ No employee found with employeeId:', employeeId);
+            console.log('💡 Tip: Make sure the employee was created through Employee Management page');
+            throw new Error(`Employee ID ${employeeId} not found in system`);
+          }
+        } catch (error) {
+          console.error('❌ Error finding employee:', error);
           throw new Error(`Employee ID ${employeeId} not found in system`);
         }
-      } catch (error) {
-        console.error('❌ Error finding employee:', error);
-        throw new Error(`Employee ID ${employeeId} not found in system`);
       }
     } else {
       // It's an email login
@@ -74,7 +110,7 @@ export const loginUser = async (emailOrId, password) => {
         
         // Check if employee is deleted
         if (userData.status === 'Deleted') {
-          throw new Error('This employee account has been deleted. Please contact administrator.');
+          throw new Error('This account has been deleted. Please contact administrator.');
         }
         
         return {
@@ -83,7 +119,8 @@ export const loginUser = async (emailOrId, password) => {
           name: userData.name,
           role: userData.role,
           specialization: userData.specialization || null,
-          employeeId: userData.employeeId || null
+          employeeId: userData.employeeId || null,
+          adminId: userData.adminId || null
         };
       }
     } catch (firestoreError) {
@@ -94,7 +131,7 @@ export const loginUser = async (emailOrId, password) => {
       }
     }
 
-    // Fallback to hardcoded mapping (only for SuperAdmin, Admin, Client)
+    // Fallback to hardcoded mapping (only for SuperAdmin and Client)
     const userInfo = userRoles[email];
     
     if (userInfo) {
@@ -105,13 +142,14 @@ export const loginUser = async (emailOrId, password) => {
         name: userInfo.name,
         role: userInfo.role,
         specialization: userInfo.specialization || null,
-        employeeId: userInfo.employeeId || null
+        employeeId: userInfo.employeeId || null,
+        adminId: userInfo.adminId || null
       };
     }
     
-    // If we reach here and it was an employee ID login, something is wrong
-    if (isEmployeeIdLogin) {
-      throw new Error('Employee data not found in system');
+    // If we reach here and it was an employee/admin ID login, something is wrong
+    if (isEmployeeIdLogin || isAdminIdLogin) {
+      throw new Error('User data not found in system');
     }
     
     // Final fallback - treat as client
