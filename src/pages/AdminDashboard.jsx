@@ -195,37 +195,34 @@ function AdminDashboard({ user, onLogout }) {
     }
   }
 
-  const handleAssignProject = (projectId, employeeName) => {
+  const handleAssignProject = async (projectId, employeeName) => {
     if (!employeeName) return
 
-    const employee = mockEmployees.find(emp => emp.name === employeeName)
-    if (!employee || employee.specialization !== 'Software') {
+    const employee = employees.find(emp => emp.name === employeeName)
+    if (!employee || employee.specialization !== 'Software Development') {
       alert('Only software development employees can be assigned to projects')
       return
     }
 
-    const savedProjects = localStorage.getItem('softwareProjects')
-    const allProjects = savedProjects ? JSON.parse(savedProjects) : []
-    const updatedProjects = allProjects.map(p => {
-      if (p.id === projectId) {
-        return {
-          ...p,
-          assignedTo: employeeName,
-          assignedBy: user.name,
-          assignedAt: new Date().toISOString(),
-          statusHistory: [...(p.statusHistory || []), {
-            status: 'Assigned to Employee',
-            updatedBy: user.name,
-            updatedAt: new Date().toISOString(),
-            role: 'admin'
-          }]
-        }
-      }
-      return p
-    })
-    localStorage.setItem('softwareProjects', JSON.stringify(updatedProjects))
-    loadProjects()
-    setSelectedProjectEmployee({ ...selectedProjectEmployee, [projectId]: '' })
+    try {
+      const { updateSoftwareProject } = await import('../firebase/firestore')
+      await updateSoftwareProject(projectId, {
+        assignedTo: employeeName,
+        assignedBy: user.name,
+        assignedAt: new Date().toISOString(),
+        statusHistory: [...(projects.find(p => p.id === projectId)?.statusHistory || []), {
+          status: 'Assigned to Employee',
+          updatedBy: user.name,
+          updatedAt: new Date().toISOString(),
+          role: 'admin'
+        }]
+      })
+      setSelectedProjectEmployee({ ...selectedProjectEmployee, [projectId]: '' })
+      alert(`Project assigned to ${employeeName} successfully!`)
+    } catch (error) {
+      console.error('Error assigning project:', error)
+      alert('Failed to assign project')
+    }
   }
 
   const pendingTasks = tasks.filter(t => t.status === 'pending')
@@ -234,7 +231,7 @@ function AdminDashboard({ user, onLogout }) {
   const cancelledTasks = tasks.filter(t => t.status === 'rejected')
   const assignedCount = tasks.filter(t => t.assignedTo).length
   const availableProjects = projects.filter(p => !p.assignedTo && p.status === 'Available')
-  const softwareEmployees = mockEmployees.filter(emp => emp.specialization === 'Software')
+  const softwareEmployees = employees.filter(emp => emp.specialization === 'Software Development')
 
   const formatDateTime = (dateString) => {
     const date = new Date(dateString)

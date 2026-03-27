@@ -27,16 +27,24 @@ export const loginUser = async (emailOrId, password) => {
         console.log('🔍 Admin ID login detected:', inputId);
         console.log('🔍 Searching Firestore for adminId:', inputId);
         
-        // Search for admin by adminId in Firestore
+        // Search for admin by adminId in Firestore (case-insensitive search)
         try {
-          const q = query(collection(db, 'users'), where('adminId', '==', inputId));
+          // Get all admins and search case-insensitively
+          const q = query(collection(db, 'users'), where('role', '==', 'admin'));
           const querySnapshot = await getDocs(q);
           
-          console.log('🔍 Query results:', querySnapshot.size, 'documents found');
+          console.log('🔍 Query results:', querySnapshot.size, 'admin documents found');
           
-          if (!querySnapshot.empty) {
-            const adminDoc = querySnapshot.docs[0];
-            const adminData = adminDoc.data();
+          let adminData = null;
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.adminId && data.adminId.toUpperCase() === inputId) {
+              adminData = data;
+              console.log('✅ Found matching admin:', data.adminId);
+            }
+          });
+          
+          if (adminData) {
             email = adminData.email;
             console.log('✅ Found admin in Firestore:', {
               name: adminData.name,

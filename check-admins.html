@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Check Admins</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    button {
+      background: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover { background: #45a049; }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .admin-card {
+      background: #fff;
+      border: 2px solid #ddd;
+      border-left: 4px solid #4CAF50;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .admin-id { 
+      font-size: 18px; 
+      font-weight: bold; 
+      color: #4CAF50; 
+    }
+    .note {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Check Admin Accounts</h1>
+    <p>Click the button below to fetch all admin accounts from Firebase:</p>
+    <button onclick="checkAdmins()">Fetch Admins</button>
+    <div id="result"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEqAU7lg_L7dKCU_zxJPvVYqLWKKdxGWo",
+      authDomain: "task-management-system-c5e8f.firebaseapp.com",
+      projectId: "task-management-system-c5e8f",
+      storageBucket: "task-management-system-c5e8f.firebasestorage.app",
+      messagingSenderId: "655414909651",
+      appId: "1:655414909651:web:e0e8e0e0e0e0e0e0e0e0e0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.checkAdmins = async function() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>⏳ Loading admins...</p>';
+
+      try {
+        const q = query(collection(db, 'users'), where('role', '==', 'admin'));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          resultDiv.innerHTML = `
+            <div class="note">
+              <strong>❌ No admins found in Firebase.</strong><br><br>
+              💡 You need to create an admin first using the SuperAdmin dashboard.<br>
+              💡 Login as SuperAdmin and go to Admin Management to create an admin.
+            </div>
+          `;
+          return;
+        }
+
+        let html = `<h3>✅ Found ${querySnapshot.size} admin(s):</h3>`;
+        
+        querySnapshot.forEach((doc) => {
+          const admin = doc.data();
+          html += `
+            <div class="admin-card">
+              <div class="admin-id">Admin ID: ${admin.adminId || 'N/A'}</div>
+              <p><strong>Name:</strong> ${admin.name || 'N/A'}</p>
+              <p><strong>Email:</strong> ${admin.email || 'N/A'}</p>
+              <p><strong>Department:</strong> ${admin.department || 'N/A'}</p>
+              <p><strong>Status:</strong> ${admin.status || 'N/A'}</p>
+              <p><strong>Created:</strong> ${admin.createdAt ? new Date(admin.createdAt).toLocaleString() : 'N/A'}</p>
+            </div>
+          `;
+        });
+
+        html += `
+          <div class="note">
+            <strong>📝 IMPORTANT NOTES:</strong><br><br>
+            • Passwords are encrypted and CANNOT be retrieved from Firebase<br>
+            • To login, use: <strong>Admin ID + Password</strong> (that was set during creation)<br>
+            • If you forgot the password, you need to:<br>
+              &nbsp;&nbsp;1. Delete the admin from Admin Management page<br>
+              &nbsp;&nbsp;2. Create a new admin with a new password<br>
+              &nbsp;&nbsp;OR reset password in Firebase Console → Authentication
+          </div>
+        `;
+
+        resultDiv.innerHTML = html;
+
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="note" style="border-left-color: #dc3545; background: #f8d7da;">
+            <strong>❌ Error fetching admins:</strong><br>
+            ${error.message}
+          </div>
+        `;
+        console.error('Error:', error);
+      }
+    };
+  </script>
+</body>
+</html>

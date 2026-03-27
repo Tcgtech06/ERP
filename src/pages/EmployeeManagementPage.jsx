@@ -465,7 +465,7 @@ function EmployeeManagementPage({ user, onBack }) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <h2>Employee Details: {selectedEmployee.name || 'Unknown'}</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button className="btn-red" onClick={() => handleDeleteEmployee(selectedEmployee.id)}>Delete</button>
               <button className="btn-yellow" onClick={() => setSelectedEmployee(null)}>Close</button>
             </div>
@@ -476,8 +476,14 @@ function EmployeeManagementPage({ user, onBack }) {
               <div>
                 <h4>Personal Information</h4>
                 <p><strong>Name:</strong> {selectedEmployee.name || 'N/A'}</p>
+                <p><strong>Employee ID:</strong> <span style={{ color: 'var(--primary-green)', fontWeight: 'bold', fontSize: '16px' }}>{selectedEmployee.employeeId || 'N/A'}</span></p>
                 <p><strong>Email:</strong> {selectedEmployee.email || 'N/A'}</p>
-                <p><strong>Employee ID:</strong> {selectedEmployee.employeeId || 'N/A'}</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  💡 Login: Use Employee ID + Password
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
+                  Note: Password cannot be retrieved. To reset, delete and recreate employee.
+                </p>
               </div>
               <div>
                 <h4>Work Details</h4>
