@@ -1138,7 +1138,8 @@ textarea {
   }
 
   .header p {
-    display: none;
+    display: block !important;
+    font-size: 11px;
   }
 
   .logo {
